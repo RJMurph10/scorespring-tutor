@@ -44,7 +44,7 @@ export function toISODate(d: Date) {
 /** Which weekdays are study days: spread daysPerWeek evenly, starting today. */
 export function studyDates(start: Date, days: number, daysPerWeek: number, until: number | null): string[] {
   const out: string[] = [];
-  const pattern = [0, 1, 2, 3, 4, 5, 6].filter((i) => Math.floor((i * daysPerWeek) / 7) !== Math.floor(((i + 1) * daysPerWeek) / 7) || daysPerWeek === 7);
+  const pattern = Array.from({ length: daysPerWeek }, (_, k) => Math.floor((k * 7) / daysPerWeek));
   for (let i = 0; i < days; i++) {
     if (until !== null && i > until) break;
     if (!pattern.includes(i % 7)) continue;
