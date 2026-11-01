@@ -113,7 +113,7 @@ export function buildWeekPlan(args: {
     // fill with priority skill work
     let guard = 0;
     while (left >= 8 && prioritySkills.length > 0 && guard++ < 6) {
-      const s = prioritySkills[skillCursor % prioritySkills.length];
+      const s = prioritySkills[skillCursor % prioritySkills.length]!;
       skillCursor++;
       const st = stats.get(s.id);
       const needsLesson = !crunch && !completedLessons.has(s.id) && (!st || st.mastery < 0.6);
@@ -127,7 +127,7 @@ export function buildWeekPlan(args: {
 
     // spaced review of strong skills every other day
     if (strongSkills.length > 0 && dayIdx % 2 === 1 && left >= TASK_MINUTES.review) {
-      const s = strongSkills[reviewCursor % strongSkills.length];
+      const s = strongSkills[reviewCursor % strongSkills.length]!;
       reviewCursor++;
       add({ kind: "review", skill_id: s.id, title: `Review: ${s.name}`, objective: `Keep ${s.name.toLowerCase()} sharp with a short spaced-review set.`, minutes: TASK_MINUTES.review });
     }
