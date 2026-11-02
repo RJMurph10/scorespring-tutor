@@ -125,13 +125,17 @@ function SideNav() {
       <SidebarFooter className="border-t p-3">
         <div className="flex items-center gap-2">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-primary">
-            {(profile?.display_name || user?.email || "?").slice(0, 1).toUpperCase()}
+            {(profile?.display_name || user?.email || (isDemo() ? "G" : "?"))
+              .slice(0, 1)
+              .toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-navy">
-              {profile?.display_name || "Student"}
+              {profile?.display_name || (isDemo() ? "Guest" : "Student")}
             </p>
-            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {isDemo() ? "Guest · saved in this browser" : user?.email}
+            </p>
           </div>
           <Button
             variant="ghost"
@@ -185,24 +189,30 @@ function DemoBanner() {
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-navy px-4 py-2 text-center text-xs text-white">
       <span>
-        <strong>Demo mode</strong> — you're exploring as a sample student. Data is made up and saved
-        only in this browser.
+        <strong>Guest mode</strong> — your progress is saved only in this browser.
       </span>
       <span className="flex gap-3 font-semibold">
-        <Link to="/onboarding" className="underline underline-offset-2 hover:opacity-80">
-          See onboarding
-        </Link>
         <button
           className="underline underline-offset-2 hover:opacity-80"
-          onClick={() => resetDemo()}
+          onClick={() => {
+            if (window.confirm("Start over? This erases your guest progress in this browser."))
+              resetDemo("/onboarding");
+          }}
         >
-          Reset sample data
+          Start over
         </button>
         <button
           className="underline underline-offset-2 hover:opacity-80"
-          onClick={() => exitDemo("/auth?mode=signup")}
+          onClick={() => {
+            if (
+              window.confirm(
+                "Create a free account? Guest progress stays in this browser and isn't copied to the new account.",
+              )
+            )
+              exitDemo("/auth?mode=signup");
+          }}
         >
-          Create a real account
+          Create a free account
         </button>
       </span>
     </div>

@@ -145,3 +145,29 @@ describe("buildWeekPlan lessons", () => {
     expect(plan.some((t) => t.kind === "guided_practice")).toBe(true);
   });
 });
+
+describe("ACT composite (enhanced format)", () => {
+  const mk = (section: string, n: number, correct: boolean): AttemptLite[] =>
+    Array.from({ length: n }, (_, i) => ({
+      skill_id: "x",
+      section,
+      exam: "ACT",
+      difficulty: 2,
+      is_correct: correct,
+      time_ms: 60000,
+      created_at: new Date(2026, 9, 1, 0, i).toISOString(),
+    }));
+
+  it("doesn't require Science and excludes it from the composite", () => {
+    const base = [...mk("English", 10, true), ...mk("Math", 10, true), ...mk("Reading", 10, true)];
+    const withoutScience = estimateScore("ACT", base, true);
+    expect(withoutScience.ready).toBe(true);
+    const withWeakScience = estimateScore("ACT", [...base, ...mk("Science", 10, false)], true);
+    expect(withWeakScience.ready && withoutScience.ready && withWeakScience.mid).toBe(
+      withoutScience.ready ? withoutScience.mid : -1,
+    );
+    expect(
+      withWeakScience.ready && withWeakScience.sections.some((s) => s.section === "Science"),
+    ).toBe(true);
+  });
+});

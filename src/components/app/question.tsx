@@ -52,9 +52,7 @@ export function Passage({ text, scroll = false }: { text: string; scroll?: boole
 
   const lines = text.split("\n");
   const blocks: (
-    | { kind: "p"; text: string }
-    | { kind: "h"; text: string }
-    | { kind: "table"; rows: string[][] }
+    { kind: "p"; text: string } | { kind: "h"; text: string } | { kind: "table"; rows: string[][] }
   )[] = [];
   for (const line of lines) {
     if (line.includes(" | ")) {

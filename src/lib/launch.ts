@@ -77,7 +77,8 @@ export function useLaunchers() {
         uid: uid!,
         exam: m.exam,
         pool: pool(),
-        includeScience,
+        // Choosing the Science section directly always includes it, even if it's off in Settings.
+        includeScience: sectionsOnly?.includes("Science") ? true : includeScience,
         sectionsOnly,
         taskId,
       }),

@@ -91,7 +91,7 @@ function Landing() {
             <>
               {DEMO_ENABLED && (
                 <Button asChild variant="ghost" className="hidden sm:inline-flex">
-                  <Link to="/dashboard">Explore demo</Link>
+                  <Link to="/dashboard">Try as guest</Link>
                 </Button>
               )}
               <Button asChild variant="ghost">
@@ -133,7 +133,7 @@ function Landing() {
             </Button>
             {!session && DEMO_ENABLED && (
               <Button asChild size="lg" variant="outline" className="h-12 px-6 text-base">
-                <Link to="/dashboard">Explore the app — no sign-up</Link>
+                <Link to="/dashboard">Try it free — no sign-up</Link>
               </Button>
             )}
           </div>
@@ -154,7 +154,12 @@ function Landing() {
           <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-[radial-gradient(60%_60%_at_70%_30%,oklch(0.93_0.05_258),transparent)]" />
           <div className="rounded-2xl border bg-card p-5 shadow-[0_20px_50px_-20px_rgba(20,40,120,0.25)]">
             <div className="flex items-center justify-between border-b pb-3">
-              <p className="text-sm font-semibold text-navy">SAT Math · Advanced Math</p>
+              <p className="text-sm font-semibold text-navy">
+                <span className="mr-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+                  Example
+                </span>
+                SAT Math · Advanced Math
+              </p>
               <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-semibold text-primary">
                 Learning mode
               </span>
