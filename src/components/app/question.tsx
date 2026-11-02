@@ -1,13 +1,61 @@
 import { Check, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import type { Question } from "@/lib/data";
 import { choicesOf } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
 
-/** Renders passage text; lines like "Label: a | b | c" become a small data table. */
-export function Passage({ text }: { text: string }) {
+/** Renders **inline** __underlined__ portions (ACT English, SAT "underlined sentence" questions). */
+function Inline({ text }: { text: string }) {
+  const parts = text.split(/(__[^_]+(?:_[^_]+)*__)/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.startsWith("__") && part.endsWith("__") ? (
+          <u
+            key={i}
+            data-active=""
+            className="decoration-primary decoration-2 underline-offset-4 bg-accent/70 rounded-sm px-0.5"
+          >
+            {part.slice(2, -2)}
+          </u>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+function isHeading(line: string) {
+  const t = line.trim();
+  return (
+    /^(Passage [IVX]+|Table \d|Figure \d|Experiment \d|Study \d|Scientist \d|Text \d)/.test(t) ||
+    (t.length < 60 && !/[.?!:"”)]$/.test(t) && !t.startsWith("•"))
+  );
+}
+
+/**
+ * Renders a passage or stimulus. Lines like "Label: a | b | c" become a data table, short title
+ * lines become headings, and __text__ is underlined. Long passages scroll inside their own panel
+ * and keep the underlined portion in view.
+ */
+export function Passage({ text, scroll = false }: { text: string; scroll?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = ref.current;
+    const active = box?.querySelector("[data-active]") as HTMLElement | null;
+    if (box && active && scroll) {
+      box.scrollTop = Math.max(0, active.offsetTop - box.clientHeight / 3);
+    }
+  }, [text, scroll]);
+
   const lines = text.split("\n");
-  const blocks: ({ kind: "p"; text: string } | { kind: "table"; rows: string[][] })[] = [];
+  const blocks: (
+    | { kind: "p"; text: string }
+    | { kind: "h"; text: string }
+    | { kind: "table"; rows: string[][] }
+  )[] = [];
   for (const line of lines) {
     if (line.includes(" | ")) {
       const [head, rest] = line.includes(":")
@@ -20,30 +68,37 @@ export function Passage({ text }: { text: string }) {
       if (last?.kind === "table") last.rows.push(cells);
       else blocks.push({ kind: "table", rows: [cells] });
     } else if (line.trim()) {
-      blocks.push({ kind: "p", text: line });
+      blocks.push(isHeading(line) ? { kind: "h", text: line } : { kind: "p", text: line });
     }
   }
   return (
-    <div className="space-y-3 rounded-xl border bg-muted/40 p-4 text-[15px] leading-relaxed text-navy">
+    <div
+      ref={ref}
+      className={cn(
+        "relative space-y-3 rounded-xl border bg-muted/40 p-4 text-[15px] leading-relaxed text-navy",
+        scroll && "max-h-[70vh] overflow-y-auto",
+      )}
+    >
       {blocks.map((b, i) =>
-        b.kind === "p" ? (
-          <p
-            key={i}
-            className={i === 0 && blocks[1]?.kind === "table" ? "text-sm font-semibold" : ""}
-          >
-            {b.text}
+        b.kind === "h" ? (
+          <p key={i} className="text-sm font-semibold">
+            <Inline text={b.text} />
+          </p>
+        ) : b.kind === "p" ? (
+          <p key={i}>
+            <Inline text={b.text} />
           </p>
         ) : (
-          <div key={i} className="overflow-x-auto">
+          <div key={i} className="overflow-x-auto rounded-lg border bg-card">
             <table className="tabular w-full border-collapse text-sm">
               <tbody>
                 {b.rows.map((r, ri) => (
-                  <tr key={ri} className="border-b last:border-0">
+                  <tr key={ri} className={cn("border-b last:border-0", ri === 0 && "bg-muted/60")}>
                     {r.map((c, ci) => (
                       <td
                         key={ci}
                         className={cn(
-                          "px-2 py-1.5",
+                          "px-2.5 py-1.5",
                           ci === 0 ? "font-semibold whitespace-nowrap" : "text-center",
                         )}
                       >

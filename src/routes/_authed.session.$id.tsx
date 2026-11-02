@@ -382,9 +382,11 @@ function Runner({
     state.index +
     1;
   const lowTime = remaining != null && remaining <= 60;
+  // Long passages (ACT Reading/Science/English) sit beside the question on wide screens, like the real test.
+  const split = (q.passage?.length ?? 0) > 700;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={cn("mx-auto", split ? "max-w-6xl" : "max-w-3xl")}>
       {/* top bar */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
@@ -436,150 +438,156 @@ function Runner({
           )}
         </div>
 
-        {q.passage && (
-          <div className="mb-4">
-            <Passage text={q.passage} />
-          </div>
-        )}
-        <p className="mb-5 text-[16px] leading-relaxed font-medium text-navy">{q.prompt}</p>
-        <ChoiceList
-          question={q}
-          selected={ans.selected}
-          onSelect={(i) => !(learning && ans.submitted) && setAnswer({ selected: i })}
-          reveal={learning && ans.submitted}
-          disabled={learning && ans.submitted}
-        />
-
-        {cfg.askConfidence && ans.selected != null && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">How sure are you?</span>
-            {[
-              [1, "Guessing"],
-              [2, "Somewhat"],
-              [3, "Sure"],
-            ].map(([v, l]) => (
-              <button
-                key={v}
-                onClick={() => setAnswer({ confidence: v as number })}
-                className={cn(
-                  "rounded-md border px-2.5 py-1 text-xs font-semibold",
-                  ans.confidence === v
-                    ? "border-primary bg-accent text-primary"
-                    : "text-muted-foreground hover:border-primary/40",
-                )}
-                aria-pressed={ans.confidence === v}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {learning && !ans.submitted && showHint && (
-          <div className="mt-4 rounded-xl bg-warning-soft p-4 text-sm text-navy">
-            <p className="flex items-center gap-1.5 font-semibold">
-              <Lightbulb className="size-4" /> Hint
+        <div className={cn(split && "lg:grid lg:grid-cols-2 lg:items-start lg:gap-8")}>
+          {q.passage && (
+            <div className={cn("mb-4", split && "lg:sticky lg:top-20 lg:mb-0")}>
+              <Passage text={q.passage} scroll={split} />
+            </div>
+          )}
+          <div>
+            <p className="mb-5 text-[16px] leading-relaxed font-medium whitespace-pre-line text-navy">
+              {q.prompt}
             </p>
-            <p className="mt-1">{hintFor(q)}</p>
-          </div>
-        )}
+            <ChoiceList
+              question={q}
+              selected={ans.selected}
+              onSelect={(i) => !(learning && ans.submitted) && setAnswer({ selected: i })}
+              reveal={learning && ans.submitted}
+              disabled={learning && ans.submitted}
+            />
 
-        {learning && ans.submitted && (
-          <div
-            className={cn(
-              "mt-5 rounded-xl p-4 text-sm",
-              isCorrect ? "bg-success-soft" : "bg-destructive/5",
+            {cfg.askConfidence && ans.selected != null && (
+              <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted-foreground">How sure are you?</span>
+                {[
+                  [1, "Guessing"],
+                  [2, "Somewhat"],
+                  [3, "Sure"],
+                ].map(([v, l]) => (
+                  <button
+                    key={v}
+                    onClick={() => setAnswer({ confidence: v as number })}
+                    className={cn(
+                      "rounded-md border px-2.5 py-1 text-xs font-semibold",
+                      ans.confidence === v
+                        ? "border-primary bg-accent text-primary"
+                        : "text-muted-foreground hover:border-primary/40",
+                    )}
+                    aria-pressed={ans.confidence === v}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
             )}
-            aria-live="polite"
-          >
-            <p
-              className={cn(
-                "flex items-center gap-1.5 font-semibold",
-                isCorrect ? "text-success" : "text-destructive",
-              )}
-            >
-              {isCorrect ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
-              {isCorrect
-                ? ans.usedHint
-                  ? "Correct (with a hint)"
-                  : "Correct"
-                : `Not quite — the answer is ${"ABCDE"[q.correct_index]}`}
-            </p>
-            {!isCorrect && ans.selected != null && distractorNote(q, ans.selected) && (
-              <p className="mt-2 text-navy">
-                <strong>Why {"ABCDE"[ans.selected]} is tempting:</strong>{" "}
-                {distractorNote(q, ans.selected)}
-              </p>
-            )}
-            <p className="mt-2 text-navy">{q.explanation}</p>
-            {Object.entries((q.distractor_notes ?? {}) as Record<string, string>)
-              .filter(([k]) => Number(k) !== ans.selected && Number(k) !== q.correct_index)
-              .slice(0, 1)
-              .map(([k, v]) => (
-                <p key={k} className="mt-2 text-muted-foreground">
-                  Also tempting, {"ABCDE"[Number(k)]}: {v}
+
+            {learning && !ans.submitted && showHint && (
+              <div className="mt-4 rounded-xl bg-warning-soft p-4 text-sm text-navy">
+                <p className="flex items-center gap-1.5 font-semibold">
+                  <Lightbulb className="size-4" /> Hint
                 </p>
-              ))}
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/tutor" search={{ q: tutorPrompt(q, ans.selected) }}>
-                  <MessageCircleQuestion className="size-4" /> Ask the tutor
-                </Link>
-              </Button>
-              {!isCorrect && <SimilarQuestion sourceId={q.id} />}
+                <p className="mt-1">{hintFor(q)}</p>
+              </div>
+            )}
+
+            {learning && ans.submitted && (
+              <div
+                className={cn(
+                  "mt-5 rounded-xl p-4 text-sm",
+                  isCorrect ? "bg-success-soft" : "bg-destructive/5",
+                )}
+                aria-live="polite"
+              >
+                <p
+                  className={cn(
+                    "flex items-center gap-1.5 font-semibold",
+                    isCorrect ? "text-success" : "text-destructive",
+                  )}
+                >
+                  {isCorrect ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
+                  {isCorrect
+                    ? ans.usedHint
+                      ? "Correct (with a hint)"
+                      : "Correct"
+                    : `Not quite — the answer is ${"ABCDE"[q.correct_index]}`}
+                </p>
+                {!isCorrect && ans.selected != null && distractorNote(q, ans.selected) && (
+                  <p className="mt-2 text-navy">
+                    <strong>Why {"ABCDE"[ans.selected]} is tempting:</strong>{" "}
+                    {distractorNote(q, ans.selected)}
+                  </p>
+                )}
+                <p className="mt-2 text-navy">{q.explanation}</p>
+                {Object.entries((q.distractor_notes ?? {}) as Record<string, string>)
+                  .filter(([k]) => Number(k) !== ans.selected && Number(k) !== q.correct_index)
+                  .slice(0, 1)
+                  .map(([k, v]) => (
+                    <p key={k} className="mt-2 text-muted-foreground">
+                      Also tempting, {"ABCDE"[Number(k)]}: {v}
+                    </p>
+                  ))}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/tutor" search={{ q: tutorPrompt(q, ans.selected) }}>
+                      <MessageCircleQuestion className="size-4" /> Ask the tutor
+                    </Link>
+                  </Button>
+                  {!isCorrect && <SimilarQuestion sourceId={q.id} />}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+              {learning ? (
+                <>
+                  <div>
+                    {cfg.allowHints && !ans.submitted && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowHint(true);
+                          setAnswer({ usedHint: true });
+                        }}
+                        disabled={showHint}
+                      >
+                        <Lightbulb className="size-4" /> Hint
+                      </Button>
+                    )}
+                  </div>
+                  {!ans.submitted ? (
+                    <Button onClick={submitLearning} disabled={ans.selected == null}>
+                      Check answer
+                    </Button>
+                  ) : (
+                    <Button onClick={nextLearning}>
+                      {posInAll >= totalQs ? "See results" : "Next question"}{" "}
+                      <ArrowRight className="size-4" />
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => goTo(state.sectionIdx, state.index - 1)}
+                    disabled={state.index === 0}
+                  >
+                    <ArrowLeft className="size-4" /> Back
+                  </Button>
+                  {state.index < sectionQs.length - 1 ? (
+                    <Button onClick={() => goTo(state.sectionIdx, state.index + 1)}>
+                      Next <ArrowRight className="size-4" />
+                    </Button>
+                  ) : (
+                    <Button onClick={() => setConfirmOpen(true)}>
+                      {state.sectionIdx < cfg.sections.length - 1 ? "Submit section" : "Finish"}
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
           </div>
-        )}
-
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-          {learning ? (
-            <>
-              <div>
-                {cfg.allowHints && !ans.submitted && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowHint(true);
-                      setAnswer({ usedHint: true });
-                    }}
-                    disabled={showHint}
-                  >
-                    <Lightbulb className="size-4" /> Hint
-                  </Button>
-                )}
-              </div>
-              {!ans.submitted ? (
-                <Button onClick={submitLearning} disabled={ans.selected == null}>
-                  Check answer
-                </Button>
-              ) : (
-                <Button onClick={nextLearning}>
-                  {posInAll >= totalQs ? "See results" : "Next question"}{" "}
-                  <ArrowRight className="size-4" />
-                </Button>
-              )}
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => goTo(state.sectionIdx, state.index - 1)}
-                disabled={state.index === 0}
-              >
-                <ArrowLeft className="size-4" /> Back
-              </Button>
-              {state.index < sectionQs.length - 1 ? (
-                <Button onClick={() => goTo(state.sectionIdx, state.index + 1)}>
-                  Next <ArrowRight className="size-4" />
-                </Button>
-              ) : (
-                <Button onClick={() => setConfirmOpen(true)}>
-                  {state.sectionIdx < cfg.sections.length - 1 ? "Submit section" : "Finish"}
-                </Button>
-              )}
-            </>
-          )}
         </div>
       </div>
 
@@ -872,7 +880,7 @@ function Results({ session, questions }: { session: Session; questions: Question
                     <Passage text={q.passage} />
                   </div>
                 )}
-                <p className="mb-3 font-medium text-navy">{q.prompt}</p>
+                <p className="mb-3 font-medium whitespace-pre-line text-navy">{q.prompt}</p>
                 <ChoiceList question={q} selected={a?.selected ?? null} reveal disabled />
                 <div className="mt-3 rounded-xl bg-muted/60 p-3 text-sm text-navy">
                   {!ok && a?.selected != null && distractorNote(q, a.selected) && (
