@@ -239,13 +239,10 @@ function TutorPage() {
         {status.data && !status.data.configured && !isDemo() ? (
           <div className="m-6 rounded-xl border border-warning/40 bg-warning-soft p-5 text-sm text-navy">
             <p className="flex items-center gap-2 font-semibold">
-              <TriangleAlert className="size-4" /> The AI tutor isn't set up yet
+              <TriangleAlert className="size-4" /> The AI tutor isn't available right now
             </p>
             <p className="mt-1 text-muted-foreground">
-              No AI responses will be generated until AI is enabled for this project. In Lovable,
-              open the project's Cloud settings and enable Lovable AI — it securely provides the
-              server key. Everything else in the app (practice, lessons, plan, analytics) works
-              without it.
+              Practice, lessons, practice tests, your study plan and progress all work as usual.
             </p>
           </div>
         ) : !search.c || convs.isLoading ? (
@@ -454,7 +451,7 @@ function ChatInner({
             <p className="rounded-lg bg-destructive/5 px-3 py-2 text-sm text-destructive">
               The tutor couldn't respond
               {error.message.includes("AI_NOT_CONFIGURED")
-                ? " — AI isn't configured for this project yet."
+                ? " — it isn't available right now."
                 : `: ${error.message.slice(0, 200)}`}
             </p>
           )}
@@ -462,16 +459,9 @@ function ChatInner({
         <ConversationScrollButton />
       </Conversation>
       <div className="border-t p-3 md:p-4">
-        {demo && (
-          <p
-            className={cn(
-              "mb-2 rounded-lg px-3 py-2 text-xs",
-              demoBlocked ? "bg-warning-soft text-navy" : "bg-muted text-muted-foreground",
-            )}
-          >
-            {demoBlocked
-              ? "The AI tutor needs a free account. Create one from the banner at the top — your guest progress stays in this browser."
-              : "You're using ScoreSpring as a guest. The AI tutor is available with a free account."}
+        {demo && demoBlocked && (
+          <p className="mb-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+            The AI tutor isn't available right now.
           </p>
         )}
         <div className="flex items-end gap-2 rounded-xl border bg-background p-2 focus-within:ring-2 focus-within:ring-ring">

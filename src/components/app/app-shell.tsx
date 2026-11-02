@@ -30,7 +30,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
-import { exitDemo, isDemo, resetDemo } from "@/lib/demo";
+import { DEMO_ENABLED } from "@/lib/demo";
 import { useProfile, useUpdateProfile } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -125,27 +125,27 @@ function SideNav() {
       <SidebarFooter className="border-t p-3">
         <div className="flex items-center gap-2">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-primary">
-            {(profile?.display_name || user?.email || (isDemo() ? "G" : "?"))
-              .slice(0, 1)
-              .toUpperCase()}
+            {(profile?.display_name || "S").slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-navy">
-              {profile?.display_name || (isDemo() ? "Guest" : "Student")}
+              {profile?.display_name || "Student"}
             </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {isDemo() ? "Guest · saved in this browser" : user?.email}
-            </p>
+            {!DEMO_ENABLED && user?.email && (
+              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+            )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            onClick={() => signOut()}
-            aria-label="Sign out"
-          >
-            <LogOut className="size-4" />
-          </Button>
+          {!DEMO_ENABLED && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              onClick={() => signOut()}
+              aria-label="Sign out"
+            >
+              <LogOut className="size-4" />
+            </Button>
+          )}
         </div>
       </SidebarFooter>
     </Sidebar>
@@ -185,46 +185,11 @@ function MobileTabs() {
   );
 }
 
-function DemoBanner() {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-navy px-4 py-2 text-center text-xs text-white">
-      <span>
-        <strong>Guest mode</strong> — your progress is saved only in this browser.
-      </span>
-      <span className="flex gap-3 font-semibold">
-        <button
-          className="underline underline-offset-2 hover:opacity-80"
-          onClick={() => {
-            if (window.confirm("Start over? This erases your guest progress in this browser."))
-              resetDemo("/onboarding");
-          }}
-        >
-          Start over
-        </button>
-        <button
-          className="underline underline-offset-2 hover:opacity-80"
-          onClick={() => {
-            if (
-              window.confirm(
-                "Create a free account? Guest progress stays in this browser and isn't copied to the new account.",
-              )
-            )
-              exitDemo("/auth?mode=signup");
-          }}
-        >
-          Create a free account
-        </button>
-      </span>
-    </div>
-  );
-}
-
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <SideNav />
       <div className="flex min-h-svh w-full min-w-0 flex-col bg-background">
-        {isDemo() && <DemoBanner />}
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b bg-background/85 px-4 backdrop-blur md:px-8">
           <Link to="/dashboard" className="md:hidden">
             <Logo />

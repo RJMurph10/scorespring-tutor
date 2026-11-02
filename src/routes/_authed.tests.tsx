@@ -11,7 +11,6 @@ import {
 } from "@/components/app/common";
 import { Button } from "@/components/ui/button";
 import { useQuestionsForExam, useSessions, useStudentModel, type Session } from "@/lib/data";
-import { isDemo } from "@/lib/demo";
 import { FULL_TEST_STRUCTURE, SECTION_INFO, type Exam } from "@/lib/domain/exams";
 import { useLaunchers } from "@/lib/launch";
 import { parseConfig, type SessionResults } from "@/lib/sessions";
@@ -187,7 +186,6 @@ function Tests() {
             <p className="mt-1 text-sm text-muted-foreground">
               One essay that weighs perspectives on an issue. Practice it with the AI tutor, which
               gives you a prompt and feedback on your plan and draft.
-              {isDemo() && " The tutor needs a free account."}
             </p>
             <div className="mt-3">
               <Button variant="ghost" size="sm" asChild>

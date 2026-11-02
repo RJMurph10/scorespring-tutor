@@ -249,7 +249,7 @@ function Progress() {
       const msg = e instanceof Error ? e.message : String(e);
       setAnalysisErr(
         msg.includes("not configured")
-          ? "AI isn't configured for this project yet. The recommendations above are computed without AI."
+          ? "AI analysis isn't available right now. The recommendations above still apply."
           : msg,
       );
     } finally {

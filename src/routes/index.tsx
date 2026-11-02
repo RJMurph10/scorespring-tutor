@@ -83,17 +83,12 @@ function Landing() {
       <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-8">
         <Logo />
         <nav className="flex items-center gap-2">
-          {session ? (
+          {session || DEMO_ENABLED ? (
             <Button asChild>
-              <Link to="/dashboard">Open dashboard</Link>
+              <Link to="/dashboard">{session ? "Open dashboard" : "Get started"}</Link>
             </Button>
           ) : (
             <>
-              {DEMO_ENABLED && (
-                <Button asChild variant="ghost" className="hidden sm:inline-flex">
-                  <Link to="/dashboard">Try as guest</Link>
-                </Button>
-              )}
               <Button asChild variant="ghost">
                 <Link to="/auth">Sign in</Link>
               </Button>
@@ -121,9 +116,10 @@ function Landing() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg" className="h-12 px-6 text-base">
-              {session ? (
+              {session || DEMO_ENABLED ? (
                 <Link to="/dashboard">
-                  Continue learning <ArrowRight className="ml-1 size-4" />
+                  {session ? "Continue learning" : "Start practicing"}{" "}
+                  <ArrowRight className="ml-1 size-4" />
                 </Link>
               ) : (
                 <Link to="/auth" search={{ mode: "signup" }}>
@@ -131,11 +127,6 @@ function Landing() {
                 </Link>
               )}
             </Button>
-            {!session && DEMO_ENABLED && (
-              <Button asChild size="lg" variant="outline" className="h-12 px-6 text-base">
-                <Link to="/dashboard">Try it free — no sign-up</Link>
-              </Button>
-            )}
           </div>
           <ul className="mt-8 space-y-2 text-sm text-muted-foreground">
             {[

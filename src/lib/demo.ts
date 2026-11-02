@@ -1,14 +1,17 @@
 /**
- * GUEST MODE — use the whole app without signing in.
+ * OPEN ACCESS — the site works with no sign-in, email or account prompts.
  *
- * When enabled, a visitor who isn't signed in starts as a brand-new guest student: onboarding
- * first, then a dashboard built only from their own answers. Nothing is invented — no sample
- * name, scores or history. All "database" reads and writes are answered by an in-browser store
- * (localStorage), so nothing touches the real Supabase project and each visitor's data stays in
- * their own browser.
+ * When enabled (DEMO_ENABLED = true), a visitor without a session is silently given one:
+ *  1. First choice: a Supabase anonymous session (no email). Data is saved to the real database
+ *     under that visitor, protected by row-level security, and AI features work.
+ *     Requires "Allow anonymous sign-ins" in the project's auth settings.
+ *  2. Fallback (if anonymous sign-ins are off): a private in-browser store (localStorage). All
+ *     "database" calls are answered locally, so nothing reaches Supabase; AI features are off.
+ * Either way the visitor starts as a brand-new student — nothing is invented.
  *
  * To put the sign-in wall back, set DEMO_ENABLED to false. Nothing else needs to change.
  */
+import { supabase } from "@/integrations/supabase/client";
 import { DEMO_QUESTIONS, DEMO_SKILLS } from "@/lib/demo-seed";
 import { QUESTION_BANK } from "@/lib/question-bank";
 
@@ -72,6 +75,18 @@ function demoSession() {
 }
 
 /** Enter demo mode and reload into the app. */
+/** Give a visitor with no session a silent one: anonymous account first, browser-only fallback. */
+export async function startVisitor(redirect = "/dashboard") {
+  if (!DEMO_ENABLED) return;
+  try {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (!error && data.session) return; // the auth listener picks up the new session
+  } catch {
+    /* fall through to the browser-only store */
+  }
+  startDemo(redirect);
+}
+
 export function startDemo(redirect = "/dashboard") {
   if (!DEMO_ENABLED) return;
   localStorage.setItem(FLAG_KEY, "1");
@@ -414,5 +429,4 @@ function install() {
 
 install();
 
-export const DEMO_AI_MESSAGE =
-  "AI features need a free account. Create one to use them — your guest progress stays in this browser.";
+export const DEMO_AI_MESSAGE = "AI features aren't available right now.";
