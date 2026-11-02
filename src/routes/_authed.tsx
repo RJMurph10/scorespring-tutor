@@ -1,9 +1,11 @@
 import { createFileRoute, Navigate, Outlet, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import { AppShell } from "@/components/app/app-shell";
 import { ErrorState, LoadingState } from "@/components/app/common";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/data";
+import { DEMO_ENABLED, startDemo } from "@/lib/demo";
 
 // Signed-in area. Sessions live in browser storage, so these pages render on the client only.
 export const Route = createFileRoute("/_authed")({
@@ -16,7 +18,14 @@ function AuthedLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const profile = useProfile();
 
+  // Demo mode: no sign-in wall — visitors without an account explore as a sample student.
+  useEffect(() => {
+    if (!loading && !session && DEMO_ENABLED)
+      startDemo(window.location.pathname + window.location.search);
+  }, [loading, session]);
+
   if (loading) return <LoadingState />;
+  if (!session && DEMO_ENABLED) return <LoadingState label="Opening the demo…" />;
   if (!session) return <Navigate to="/auth" search={{ redirect: path }} replace />;
   if (profile.isLoading) return <LoadingState label="Loading your profile…" />;
   if (profile.error) return <ErrorState error={profile.error} onRetry={() => profile.refetch()} />;

@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
+// Side effect: in demo mode, routes Supabase calls to an in-browser store before any request is made.
+import { exitDemo, isDemo } from "@/lib/demo";
 
 type AuthState = {
   session: Session | null;
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     loading,
     signOut: async () => {
+      if (isDemo()) return exitDemo();
       await supabase.auth.signOut();
       qc.clear();
     },

@@ -9,7 +9,14 @@ export type PlanProfile = {
 };
 export type PlanTask = {
   scheduled_date: string;
-  kind: "lesson" | "guided_practice" | "timed_drill" | "review" | "progress_check" | "practice_test" | "diagnostic";
+  kind:
+    | "lesson"
+    | "guided_practice"
+    | "timed_drill"
+    | "review"
+    | "progress_check"
+    | "practice_test"
+    | "diagnostic";
   skill_id: string | null;
   exam: string;
   title: string;
@@ -42,7 +49,12 @@ export function toISODate(d: Date) {
 }
 
 /** Which weekdays are study days: spread daysPerWeek evenly, starting today. */
-export function studyDates(start: Date, days: number, daysPerWeek: number, until: number | null): string[] {
+export function studyDates(
+  start: Date,
+  days: number,
+  daysPerWeek: number,
+  until: number | null,
+): string[] {
   const out: string[] = [];
   const pattern = Array.from({ length: daysPerWeek }, (_, k) => Math.floor((k * 7) / daysPerWeek));
   for (let i = 0; i < days; i++) {
@@ -76,7 +88,9 @@ export function buildWeekPlan(args: {
   const budget = Math.max(10, profile.minutesPerDay);
   const examSkills = skills.filter((s) => s.exam === exam);
 
-  const ranked = [...examSkills].sort((a, b) => priority(stats.get(a.id)) - priority(stats.get(b.id)));
+  const ranked = [...examSkills].sort(
+    (a, b) => priority(stats.get(a.id)) - priority(stats.get(b.id)),
+  );
   const priorityCount = crunch ? 2 : 4;
   const prioritySkills = ranked.slice(0, priorityCount);
   const strongSkills = examSkills.filter((s) => {
@@ -86,6 +100,8 @@ export function buildWeekPlan(args: {
 
   const tasks: PlanTask[] = [];
   let skillCursor = 0;
+  // A lesson is scheduled once per week per skill; later sessions on that skill become practice.
+  const lessonPlanned = new Set<string>();
   let reviewCursor = 0;
 
   dates.forEach((date, dayIdx) => {
@@ -98,15 +114,33 @@ export function buildWeekPlan(args: {
     };
 
     if (!args.hasDiagnostic && dayIdx === 0) {
-      add({ kind: "diagnostic", skill_id: null, title: `${exam} diagnostic`, objective: "Measure your starting point in every section so the plan can target real gaps.", minutes: Math.min(left, TASK_MINUTES.diagnostic) });
+      add({
+        kind: "diagnostic",
+        skill_id: null,
+        title: `${exam} diagnostic`,
+        objective: "Measure your starting point in every section so the plan can target real gaps.",
+        minutes: Math.min(left, TASK_MINUTES.diagnostic),
+      });
     }
 
     const isLastDay = dayIdx === dates.length - 1;
     if (isLastDay && dates.length >= 3) {
       if (untilTest !== null && untilTest <= 45 && budget >= 45) {
-        add({ kind: "practice_test", skill_id: null, title: `Unofficial ${exam} section test`, objective: "Practice pacing under timed conditions on a full section.", minutes: Math.min(left, TASK_MINUTES.practice_test) });
+        add({
+          kind: "practice_test",
+          skill_id: null,
+          title: `Unofficial ${exam} section test`,
+          objective: "Practice pacing under timed conditions on a full section.",
+          minutes: Math.min(left, TASK_MINUTES.practice_test),
+        });
       } else {
-        add({ kind: "progress_check", skill_id: null, title: "Weekly progress check", objective: "Mixed questions across sections to measure this week's improvement.", minutes: TASK_MINUTES.progress_check });
+        add({
+          kind: "progress_check",
+          skill_id: null,
+          title: "Weekly progress check",
+          objective: "Mixed questions across sections to measure this week's improvement.",
+          minutes: TASK_MINUTES.progress_check,
+        });
       }
     }
 
@@ -116,20 +150,49 @@ export function buildWeekPlan(args: {
       const s = prioritySkills[skillCursor % prioritySkills.length]!;
       skillCursor++;
       const st = stats.get(s.id);
-      const needsLesson = !crunch && !completedLessons.has(s.id) && (!st || st.mastery < 0.6);
+      const needsLesson =
+        !crunch &&
+        !completedLessons.has(s.id) &&
+        !lessonPlanned.has(s.id) &&
+        (!st || st.mastery < 0.6);
       const placed = needsLesson
-        ? add({ kind: "lesson", skill_id: s.id, title: `Lesson: ${s.name}`, objective: `Understand the core idea and common traps in ${s.name.toLowerCase()}.`, minutes: TASK_MINUTES.lesson })
+        ? add({
+            kind: "lesson",
+            skill_id: s.id,
+            title: `Lesson: ${s.name}`,
+            objective: `Understand the core idea and common traps in ${s.name.toLowerCase()}.`,
+            minutes: TASK_MINUTES.lesson,
+          })
         : crunch || (st && st.mastery >= 0.6)
-          ? add({ kind: "timed_drill", skill_id: s.id, title: `Timed drill: ${s.name}`, objective: `Answer accurately at test pace on ${s.name.toLowerCase()}.`, minutes: TASK_MINUTES.timed_drill })
-          : add({ kind: "guided_practice", skill_id: s.id, title: `Guided practice: ${s.name}`, objective: `Work through hinted problems on ${s.name.toLowerCase()} and fix recurring mistakes.`, minutes: TASK_MINUTES.guided_practice });
+          ? add({
+              kind: "timed_drill",
+              skill_id: s.id,
+              title: `Timed drill: ${s.name}`,
+              objective: `Answer accurately at test pace on ${s.name.toLowerCase()}.`,
+              minutes: TASK_MINUTES.timed_drill,
+            })
+          : add({
+              kind: "guided_practice",
+              skill_id: s.id,
+              title: `Guided practice: ${s.name}`,
+              objective: `Work through hinted problems on ${s.name.toLowerCase()} and fix recurring mistakes.`,
+              minutes: TASK_MINUTES.guided_practice,
+            });
       if (!placed) break;
+      if (needsLesson) lessonPlanned.add(s.id);
     }
 
     // spaced review of strong skills every other day
     if (strongSkills.length > 0 && dayIdx % 2 === 1 && left >= TASK_MINUTES.review) {
       const s = strongSkills[reviewCursor % strongSkills.length]!;
       reviewCursor++;
-      add({ kind: "review", skill_id: s.id, title: `Review: ${s.name}`, objective: `Keep ${s.name.toLowerCase()} sharp with a short spaced-review set.`, minutes: TASK_MINUTES.review });
+      add({
+        kind: "review",
+        skill_id: s.id,
+        title: `Review: ${s.name}`,
+        objective: `Keep ${s.name.toLowerCase()} sharp with a short spaced-review set.`,
+        minutes: TASK_MINUTES.review,
+      });
     }
   });
   return tasks;
@@ -142,7 +205,12 @@ function priority(st?: SkillStat) {
 
 /** Next study date strictly after `from` that isn't in the past. */
 export function nextDate(from: string, today: Date) {
-  const base = new Date(Math.max(new Date(from + "T00:00:00").getTime(), new Date(toISODate(today) + "T00:00:00").getTime()));
+  const base = new Date(
+    Math.max(
+      new Date(from + "T00:00:00").getTime(),
+      new Date(toISODate(today) + "T00:00:00").getTime(),
+    ),
+  );
   base.setDate(base.getDate() + 1);
   return toISODate(base);
 }

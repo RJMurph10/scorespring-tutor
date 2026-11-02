@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { DEMO_ENABLED, startDemo } from "@/lib/demo";
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -230,6 +231,17 @@ function AuthPage() {
           )}
         </p>
       </div>
+      {DEMO_ENABLED && (
+        <p className="mt-6 text-sm text-muted-foreground">
+          Just looking around?{" "}
+          <button
+            className="font-semibold text-primary hover:underline"
+            onClick={() => startDemo()}
+          >
+            Explore the demo without an account
+          </button>
+        </p>
+      )}
     </div>
   );
 }

@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { getAiStatus } from "@/lib/ai.functions";
 import { activeExam, useProfile, useUserId } from "@/lib/data";
+import { isDemo } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 
 type Search = { c?: string; q?: string; mode?: "steps" };
@@ -228,12 +229,14 @@ function TutorPage() {
               onClick={() => navigate({ search: { ...search, mode: "steps" } })}
               aria-pressed={search.mode === "steps"}
             >
-              <ListOrdered className="size-3.5" /> <span className="hidden sm:inline">Step-by-step</span><span className="sm:hidden">Steps</span>
+              <ListOrdered className="size-3.5" />{" "}
+              <span className="hidden sm:inline">Step-by-step</span>
+              <span className="sm:hidden">Steps</span>
             </button>
           </div>
         </div>
 
-        {status.data && !status.data.configured ? (
+        {status.data && !status.data.configured && !isDemo() ? (
           <div className="m-6 rounded-xl border border-warning/40 bg-warning-soft p-5 text-sm text-navy">
             <p className="flex items-center gap-2 font-semibold">
               <TriangleAlert className="size-4" /> The AI tutor isn't set up yet
@@ -353,13 +356,16 @@ function ChatInner({
     onFinish: () => onActivity(),
   });
   const [input, setInput] = useState("");
+  const demo = isDemo();
+  const [demoBlocked, setDemoBlocked] = useState(false);
   const sentInitial = useRef(false);
   const busy = status === "submitted" || status === "streaming";
 
   useEffect(() => {
     if (initialPrompt && !sentInitial.current && messages.length === 0) {
       sentInitial.current = true;
-      sendMessage({ text: initialPrompt });
+      if (demo) setInput(initialPrompt);
+      else sendMessage({ text: initialPrompt });
       onConsumedPrompt();
     }
   }, [initialPrompt, messages.length, sendMessage, onConsumedPrompt]);
@@ -367,6 +373,7 @@ function ChatInner({
   function send(text: string) {
     const t = text.trim();
     if (!t || busy) return;
+    if (demo) return setDemoBlocked(true);
     sendMessage({ text: t });
     setInput("");
   }
@@ -455,6 +462,18 @@ function ChatInner({
         <ConversationScrollButton />
       </Conversation>
       <div className="border-t p-3 md:p-4">
+        {demo && (
+          <p
+            className={cn(
+              "mb-2 rounded-lg px-3 py-2 text-xs",
+              demoBlocked ? "bg-warning-soft text-navy" : "bg-muted text-muted-foreground",
+            )}
+          >
+            {demoBlocked
+              ? "Sending is turned off in demo mode — the tutor needs a real account and Lovable AI enabled. The sample conversation shows how it responds."
+              : "Demo mode: the conversation here is a sample. Live answers need a real account and Lovable AI enabled."}
+          </p>
+        )}
         <div className="flex items-end gap-2 rounded-xl border bg-background p-2 focus-within:ring-2 focus-within:ring-ring">
           <Textarea
             value={input}

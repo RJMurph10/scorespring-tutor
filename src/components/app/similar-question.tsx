@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSimilarQuestion } from "@/lib/ai.functions";
 import { useUserId, type Question } from "@/lib/data";
+import { DEMO_AI_MESSAGE, isDemo } from "@/lib/demo";
 import { distractorNote } from "@/lib/sessions";
 
 /** "Try a similar question": AI-generated, independently verified, then answered inline and saved as an attempt. */
@@ -26,6 +27,11 @@ export function SimilarQuestion({ sourceId }: { sourceId: string }) {
     setQ(null);
     setSelected(null);
     setChecked(false);
+    if (isDemo()) {
+      setErr(DEMO_AI_MESSAGE);
+      setLoading(false);
+      return;
+    }
     try {
       const res = await generateSimilarQuestion({ data: { questionId: sourceId } });
       setQ(res);

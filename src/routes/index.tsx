@@ -13,6 +13,7 @@ import {
 import { Logo } from "@/components/app/common";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { DEMO_ENABLED } from "@/lib/demo";
 
 // No head() here: the home route inherits title/description/og/twitter from __root.tsx.
 export const Route = createFileRoute("/")({
@@ -88,6 +89,11 @@ function Landing() {
             </Button>
           ) : (
             <>
+              {DEMO_ENABLED && (
+                <Button asChild variant="ghost" className="hidden sm:inline-flex">
+                  <Link to="/dashboard">Explore demo</Link>
+                </Button>
+              )}
               <Button asChild variant="ghost">
                 <Link to="/auth">Sign in</Link>
               </Button>
@@ -125,6 +131,11 @@ function Landing() {
                 </Link>
               )}
             </Button>
+            {!session && DEMO_ENABLED && (
+              <Button asChild size="lg" variant="outline" className="h-12 px-6 text-base">
+                <Link to="/dashboard">Explore the app — no sign-up</Link>
+              </Button>
+            )}
           </div>
           <ul className="mt-8 space-y-2 text-sm text-muted-foreground">
             {[
