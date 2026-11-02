@@ -10,33 +10,216 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthedDashboardRouteImport } from './routes/_authed.dashboard'
+import { Route as AuthedOnboardingRouteImport } from './routes/_authed.onboarding'
+import { Route as AuthedPlanRouteImport } from './routes/_authed.plan'
+import { Route as AuthedPracticeRouteImport } from './routes/_authed.practice'
+import { Route as AuthedProgressRouteImport } from './routes/_authed.progress'
+import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
+import { Route as AuthedTestsRouteImport } from './routes/_authed.tests'
+import { Route as AuthedTutorRouteImport } from './routes/_authed.tutor'
+import { Route as ApiTutorRouteImport } from './routes/api/tutor'
+import { Route as AuthedLessonsIndexRouteImport } from './routes/_authed.lessons.index'
+import { Route as AuthedLessonsSkillIdRouteImport } from './routes/_authed.lessons.$skillId'
+import { Route as AuthedSessionIdRouteImport } from './routes/_authed.session.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedOnboardingRoute = AuthedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedPlanRoute = AuthedPlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedPracticeRoute = AuthedPracticeRouteImport.update({
+  id: '/practice',
+  path: '/practice',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedProgressRoute = AuthedProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTestsRoute = AuthedTestsRouteImport.update({
+  id: '/tests',
+  path: '/tests',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTutorRoute = AuthedTutorRouteImport.update({
+  id: '/tutor',
+  path: '/tutor',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const ApiTutorRoute = ApiTutorRouteImport.update({
+  id: '/api/tutor',
+  path: '/api/tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedLessonsIndexRoute = AuthedLessonsIndexRouteImport.update({
+  id: '/lessons/',
+  path: '/lessons/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedLessonsSkillIdRoute = AuthedLessonsSkillIdRouteImport.update({
+  id: '/lessons/$skillId',
+  path: '/lessons/$skillId',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedSessionIdRoute = AuthedSessionIdRouteImport.update({
+  id: '/session/$id',
+  path: '/session/$id',
+  getParentRoute: () => AuthedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/dashboard': typeof AuthedDashboardRoute
+  '/onboarding': typeof AuthedOnboardingRoute
+  '/plan': typeof AuthedPlanRoute
+  '/practice': typeof AuthedPracticeRoute
+  '/progress': typeof AuthedProgressRoute
+  '/settings': typeof AuthedSettingsRoute
+  '/tests': typeof AuthedTestsRoute
+  '/tutor': typeof AuthedTutorRoute
+  '/api/tutor': typeof ApiTutorRoute
+  '/lessons/$skillId': typeof AuthedLessonsSkillIdRoute
+  '/session/$id': typeof AuthedSessionIdRoute
+  '/lessons/': typeof AuthedLessonsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/dashboard': typeof AuthedDashboardRoute
+  '/onboarding': typeof AuthedOnboardingRoute
+  '/plan': typeof AuthedPlanRoute
+  '/practice': typeof AuthedPracticeRoute
+  '/progress': typeof AuthedProgressRoute
+  '/settings': typeof AuthedSettingsRoute
+  '/tests': typeof AuthedTestsRoute
+  '/tutor': typeof AuthedTutorRoute
+  '/api/tutor': typeof ApiTutorRoute
+  '/lessons/$skillId': typeof AuthedLessonsSkillIdRoute
+  '/session/$id': typeof AuthedSessionIdRoute
+  '/lessons': typeof AuthedLessonsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authed': typeof AuthedRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/onboarding': typeof AuthedOnboardingRoute
+  '/_authed/plan': typeof AuthedPlanRoute
+  '/_authed/practice': typeof AuthedPracticeRoute
+  '/_authed/progress': typeof AuthedProgressRoute
+  '/_authed/settings': typeof AuthedSettingsRoute
+  '/_authed/tests': typeof AuthedTestsRoute
+  '/_authed/tutor': typeof AuthedTutorRoute
+  '/api/tutor': typeof ApiTutorRoute
+  '/_authed/lessons/$skillId': typeof AuthedLessonsSkillIdRoute
+  '/_authed/session/$id': typeof AuthedSessionIdRoute
+  '/_authed/lessons/': typeof AuthedLessonsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/dashboard'
+    | '/onboarding'
+    | '/plan'
+    | '/practice'
+    | '/progress'
+    | '/settings'
+    | '/tests'
+    | '/tutor'
+    | '/api/tutor'
+    | '/lessons/$skillId'
+    | '/session/$id'
+    | '/lessons/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/dashboard'
+    | '/onboarding'
+    | '/plan'
+    | '/practice'
+    | '/progress'
+    | '/settings'
+    | '/tests'
+    | '/tutor'
+    | '/api/tutor'
+    | '/lessons/$skillId'
+    | '/session/$id'
+    | '/lessons'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authed'
+    | '/auth'
+    | '/reset-password'
+    | '/_authed/dashboard'
+    | '/_authed/onboarding'
+    | '/_authed/plan'
+    | '/_authed/practice'
+    | '/_authed/progress'
+    | '/_authed/settings'
+    | '/_authed/tests'
+    | '/_authed/tutor'
+    | '/api/tutor'
+    | '/_authed/lessons/$skillId'
+    | '/_authed/session/$id'
+    | '/_authed/lessons/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiTutorRoute: typeof ApiTutorRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +231,151 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/dashboard': {
+      id: '/_authed/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthedDashboardRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/onboarding': {
+      id: '/_authed/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthedOnboardingRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/plan': {
+      id: '/_authed/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof AuthedPlanRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/practice': {
+      id: '/_authed/practice'
+      path: '/practice'
+      fullPath: '/practice'
+      preLoaderRoute: typeof AuthedPracticeRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/progress': {
+      id: '/_authed/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof AuthedProgressRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/settings': {
+      id: '/_authed/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthedSettingsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/tests': {
+      id: '/_authed/tests'
+      path: '/tests'
+      fullPath: '/tests'
+      preLoaderRoute: typeof AuthedTestsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/tutor': {
+      id: '/_authed/tutor'
+      path: '/tutor'
+      fullPath: '/tutor'
+      preLoaderRoute: typeof AuthedTutorRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/api/tutor': {
+      id: '/api/tutor'
+      path: '/api/tutor'
+      fullPath: '/api/tutor'
+      preLoaderRoute: typeof ApiTutorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/lessons/': {
+      id: '/_authed/lessons/'
+      path: '/lessons'
+      fullPath: '/lessons/'
+      preLoaderRoute: typeof AuthedLessonsIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/lessons/$skillId': {
+      id: '/_authed/lessons/$skillId'
+      path: '/lessons/$skillId'
+      fullPath: '/lessons/$skillId'
+      preLoaderRoute: typeof AuthedLessonsSkillIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/session/$id': {
+      id: '/_authed/session/$id'
+      path: '/session/$id'
+      fullPath: '/session/$id'
+      preLoaderRoute: typeof AuthedSessionIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
+interface AuthedRouteChildren {
+  AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedOnboardingRoute: typeof AuthedOnboardingRoute
+  AuthedPlanRoute: typeof AuthedPlanRoute
+  AuthedPracticeRoute: typeof AuthedPracticeRoute
+  AuthedProgressRoute: typeof AuthedProgressRoute
+  AuthedSettingsRoute: typeof AuthedSettingsRoute
+  AuthedTestsRoute: typeof AuthedTestsRoute
+  AuthedTutorRoute: typeof AuthedTutorRoute
+  AuthedLessonsSkillIdRoute: typeof AuthedLessonsSkillIdRoute
+  AuthedSessionIdRoute: typeof AuthedSessionIdRoute
+  AuthedLessonsIndexRoute: typeof AuthedLessonsIndexRoute
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedOnboardingRoute: AuthedOnboardingRoute,
+  AuthedPlanRoute: AuthedPlanRoute,
+  AuthedPracticeRoute: AuthedPracticeRoute,
+  AuthedProgressRoute: AuthedProgressRoute,
+  AuthedSettingsRoute: AuthedSettingsRoute,
+  AuthedTestsRoute: AuthedTestsRoute,
+  AuthedTutorRoute: AuthedTutorRoute,
+  AuthedLessonsSkillIdRoute: AuthedLessonsSkillIdRoute,
+  AuthedSessionIdRoute: AuthedSessionIdRoute,
+  AuthedLessonsIndexRoute: AuthedLessonsIndexRoute,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthedRoute: AuthedRouteWithChildren,
+  AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  ApiTutorRoute: ApiTutorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
