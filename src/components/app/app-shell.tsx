@@ -30,6 +30,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
+import { exitDemo, isDemo, resetDemo } from "@/lib/demo";
 import { useProfile, useUpdateProfile } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -180,11 +181,40 @@ function MobileTabs() {
   );
 }
 
+function DemoBanner() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-navy px-4 py-2 text-center text-xs text-white">
+      <span>
+        <strong>Demo mode</strong> — you're exploring as a sample student. Data is made up and saved
+        only in this browser.
+      </span>
+      <span className="flex gap-3 font-semibold">
+        <Link to="/onboarding" className="underline underline-offset-2 hover:opacity-80">
+          See onboarding
+        </Link>
+        <button
+          className="underline underline-offset-2 hover:opacity-80"
+          onClick={() => resetDemo()}
+        >
+          Reset sample data
+        </button>
+        <button
+          className="underline underline-offset-2 hover:opacity-80"
+          onClick={() => exitDemo("/auth?mode=signup")}
+        >
+          Create a real account
+        </button>
+      </span>
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <SideNav />
       <div className="flex min-h-svh w-full min-w-0 flex-col bg-background">
+        {isDemo() && <DemoBanner />}
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b bg-background/85 px-4 backdrop-blur md:px-8">
           <Link to="/dashboard" className="md:hidden">
             <Logo />

@@ -26,6 +26,7 @@ import {
 } from "@/components/app/common";
 import { Button } from "@/components/ui/button";
 import { analyzeMistakes } from "@/lib/ai.functions";
+import { DEMO_AI_MESSAGE, isDemo } from "@/lib/demo";
 import { toLite, useSessions, useStudentModel } from "@/lib/data";
 import { SCORE_RANGE } from "@/lib/domain/exams";
 import { estimateScore } from "@/lib/domain/scoring";
@@ -236,6 +237,11 @@ function Progress() {
   async function runAnalysis() {
     setAnalyzing(true);
     setAnalysisErr(null);
+    if (isDemo()) {
+      setAnalysisErr(DEMO_AI_MESSAGE);
+      setAnalyzing(false);
+      return;
+    }
     try {
       const r = await analyzeMistakes();
       setAnalysis(r.markdown);
