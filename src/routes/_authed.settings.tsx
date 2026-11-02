@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/lib/auth";
+import { DEMO_ENABLED } from "@/lib/demo";
 import { regeneratePlan, useStudentModel, useUpdateProfile, type Profile } from "@/lib/data";
 import { SCORE_RANGE } from "@/lib/domain/exams";
 
@@ -122,10 +123,12 @@ function SettingsForm({ profile }: { profile: Profile }) {
                 onChange={(e) => set("display_name", e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label>Email</Label>
-              <Input value={user?.email ?? ""} disabled />
-            </div>
+            {!DEMO_ENABLED && (
+              <div className="space-y-1.5">
+                <Label>Email</Label>
+                <Input value={user?.email ?? ""} disabled />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="gr">Grade</Label>
               <Input
@@ -288,9 +291,13 @@ function SettingsForm({ profile }: { profile: Profile }) {
         </Panel>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button variant="ghost" onClick={() => signOut()}>
-            <LogOut className="size-4" /> Sign out
-          </Button>
+          {DEMO_ENABLED ? (
+            <span />
+          ) : (
+            <Button variant="ghost" onClick={() => signOut()}>
+              <LogOut className="size-4" /> Sign out
+            </Button>
+          )}
           <Button size="lg" onClick={save} disabled={saving}>
             {saving && <Loader2 className="size-4 animate-spin" />} Save changes
           </Button>

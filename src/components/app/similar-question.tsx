@@ -38,11 +38,7 @@ export function SimilarQuestion({ sourceId }: { sourceId: string }) {
       started.current = Date.now();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      setErr(
-        msg.includes("not configured")
-          ? "AI isn't configured for this project yet, so new questions can't be generated."
-          : msg,
-      );
+      setErr(msg.includes("not configured") ? "New AI questions aren't available right now." : msg);
     } finally {
       setLoading(false);
     }
