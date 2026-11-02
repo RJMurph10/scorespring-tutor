@@ -470,8 +470,8 @@ function ChatInner({
             )}
           >
             {demoBlocked
-              ? "Sending is turned off in demo mode — the tutor needs a real account and Lovable AI enabled. The sample conversation shows how it responds."
-              : "Demo mode: the conversation here is a sample. Live answers need a real account and Lovable AI enabled."}
+              ? "The AI tutor needs a free account. Create one from the banner at the top — your guest progress stays in this browser."
+              : "You're using ScoreSpring as a guest. The AI tutor is available with a free account."}
           </p>
         )}
         <div className="flex items-end gap-2 rounded-xl border bg-background p-2 focus-within:ring-2 focus-within:ring-ring">

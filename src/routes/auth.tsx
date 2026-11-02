@@ -238,7 +238,7 @@ function AuthPage() {
             className="font-semibold text-primary hover:underline"
             onClick={() => startDemo()}
           >
-            Explore the demo without an account
+            Continue as a guest without an account
           </button>
         </p>
       )}

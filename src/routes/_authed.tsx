@@ -18,14 +18,14 @@ function AuthedLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const profile = useProfile();
 
-  // Demo mode: no sign-in wall — visitors without an account explore as a sample student.
+  // Guest mode: no sign-in wall — visitors without an account start as a new guest student.
   useEffect(() => {
     if (!loading && !session && DEMO_ENABLED)
       startDemo(window.location.pathname + window.location.search);
   }, [loading, session]);
 
   if (loading) return <LoadingState />;
-  if (!session && DEMO_ENABLED) return <LoadingState label="Opening the demo…" />;
+  if (!session && DEMO_ENABLED) return <LoadingState label="Setting up your guest session…" />;
   if (!session) return <Navigate to="/auth" search={{ redirect: path }} replace />;
   if (profile.isLoading) return <LoadingState label="Loading your profile…" />;
   if (profile.error) return <ErrorState error={profile.error} onRetry={() => profile.refetch()} />;
