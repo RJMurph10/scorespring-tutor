@@ -96,7 +96,7 @@ export function SimilarQuestion({ sourceId }: { sourceId: string }) {
       {q && (
         <div className="space-y-3">
           {q.passage && <Passage text={q.passage} />}
-          <p className="text-[15px] font-medium text-navy">{q.prompt}</p>
+          <p className="text-[15px] font-medium whitespace-pre-line text-navy">{q.prompt}</p>
           <ChoiceList
             question={q}
             selected={selected}

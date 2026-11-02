@@ -8,13 +8,15 @@
  * To put the sign-in wall back, set DEMO_ENABLED to false. Nothing else needs to change.
  */
 import { DEMO_QUESTIONS, DEMO_SKILLS } from "@/lib/demo-seed";
+import { QUESTION_BANK } from "@/lib/question-bank";
 import { computeSkillStats, type AttemptLite } from "@/lib/domain/mastery";
 import { buildWeekPlan, toISODate } from "@/lib/domain/plan";
 
 export const DEMO_ENABLED = true;
 
 const FLAG_KEY = "scorespring-demo";
-const DB_KEY = "scorespring-demo-db";
+// Bump the version when the sample data changes so existing demo visitors get fresh data.
+const DB_KEY = "scorespring-demo-db-v2";
 export const DEMO_UID = "de300000-0000-4000-8000-000000000001";
 
 const SUPABASE_URL = ((import.meta.env["VITE_SUPABASE_URL"] as string | undefined) ?? "").replace(
@@ -138,14 +140,18 @@ function seedDb(): Db {
     "act-sci-experiments": 0.52,
   };
 
-  const questions = DEMO_QUESTIONS.map((q) => ({
-    ...q,
-    source: "Original practice content",
-    generation_method: "human_authored",
-    review_status: "approved",
-    created_by: null,
-    created_at: at(30),
-  }));
+  const questions = [
+    ...DEMO_QUESTIONS.map((q) => ({
+      ...q,
+      source: "Original practice content",
+      generation_method: "human_authored",
+    })),
+    ...QUESTION_BANK.map((q) => ({
+      ...q,
+      source: "Original ScoreSpring practice content (AI-drafted; answer keys checked)",
+      generation_method: "ai_generated",
+    })),
+  ].map((q) => ({ ...q, review_status: "approved", created_by: null, created_at: at(30) }));
   const bySkill = new Map<string, typeof questions>();
   for (const q of questions) bySkill.set(q.skill_id, [...(bySkill.get(q.skill_id) ?? []), q]);
 
@@ -688,6 +694,11 @@ function install() {
   const w = window as typeof window & { __scorespringDemo?: boolean };
   if (w.__scorespringDemo) return;
   w.__scorespringDemo = true;
+  try {
+    localStorage.removeItem("scorespring-demo-db"); // sample data from before the question bank
+  } catch {
+    /* ignore */
+  }
   // Keep the stored session fresh so the auth client never tries to refresh against the real backend.
   localStorage.setItem(authStorageKey(), JSON.stringify(demoSession()));
   const original = window.fetch.bind(window);

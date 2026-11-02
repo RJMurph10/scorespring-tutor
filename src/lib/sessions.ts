@@ -8,6 +8,7 @@ import {
   type Exam,
 } from "@/lib/domain/exams";
 import { selectAdaptive } from "@/lib/domain/adaptive";
+import { groupOf } from "@/lib/question-bank/build";
 import type { SkillStat } from "@/lib/domain/mastery";
 
 export type SectionPlan = {
@@ -258,19 +259,28 @@ export async function startPracticeTest(o: {
   const used = new Set<string>();
   const plans: SectionPlan[] = specs.map((spec) => {
     const siblings = specs.filter((s) => s.section === spec.section);
-    const all = [...(bySection.get(spec.section) ?? [])].sort(
-      (a, b) => a.difficulty - b.difficulty,
-    );
-    const share = Math.max(1, Math.floor(all.length / siblings.length));
-    // module 1 gets mixed difficulty; later modules lean harder (mirrors adaptive modules loosely)
-    const available = all.filter((q) => !used.has(q.id));
+    const all = bySection.get(spec.section) ?? [];
+    const target = Math.min(spec.questions, Math.max(1, Math.floor(all.length / siblings.length)));
+    const units = testUnits(all.filter((q) => !used.has(q.id)));
+    // Later modules (SAT module 2) lean harder, loosely mirroring the adaptive second module.
     const isLater = siblings.indexOf(spec) > 0;
-    const picked = (isLater ? [...available].reverse() : shuffle(available)).slice(
-      0,
-      Math.min(spec.questions, share),
-    );
-    picked.forEach((q) => used.add(q.id));
-    const ids = shuffle(picked).map((q) => q.id);
+    // Whole passage sets are placed first so a section isn't left short by a set that won't fit.
+    const ordered = isLater
+      ? [...units].sort((a, b) => avgDifficulty(b) - avgDifficulty(a))
+      : [
+          ...shuffle(units.filter((u) => u.length > 1)),
+          ...shuffle(units.filter((u) => u.length === 1)),
+        ];
+    const picked: Question[][] = [];
+    let count = 0;
+    for (const unit of ordered) {
+      if (count + unit.length > target) continue;
+      picked.push(unit);
+      count += unit.length;
+      if (count === target) break;
+    }
+    picked.flat().forEach((q) => used.add(q.id));
+    const ids = arrangeSection(o.exam, spec.section, picked).map((q) => q.id);
     const plan: SectionPlan = {
       label: spec.label,
       section: spec.section,
@@ -300,6 +310,50 @@ export async function startPracticeTest(o: {
     config: config as unknown as Json,
     question_ids: usable.flatMap((p) => p.questionIds),
   });
+}
+
+/** Questions that must stay together: a shared-passage set, or a single standalone question. */
+function testUnits(list: Question[]): Question[][] {
+  const groups = new Map<number, Question[]>();
+  const singles: Question[][] = [];
+  for (const q of list) {
+    const g = groupOf(q.id);
+    if (g === 0) singles.push([q]);
+    else groups.set(g, [...(groups.get(g) ?? []), q]);
+  }
+  const sets = [...groups.values()].map((qs) => [...qs].sort((a, b) => a.id.localeCompare(b.id)));
+  return [...sets, ...singles];
+}
+
+function avgDifficulty(unit: Question[]) {
+  return unit.reduce((s, q) => s + q.difficulty, 0) / unit.length;
+}
+
+// Digital SAT Reading and Writing modules run in this domain order.
+const SAT_RW_ORDER = [
+  "sat-craft-structure",
+  "sat-info-ideas",
+  "sat-conventions",
+  "sat-expression-ideas",
+];
+
+/** Order a section the way the real test does. */
+function arrangeSection(exam: Exam, section: string, units: Question[][]): Question[] {
+  const flat = units.flat();
+  if (exam === "SAT" && section === "Reading and Writing")
+    return [...flat].sort(
+      (a, b) =>
+        SAT_RW_ORDER.indexOf(a.skill_id) - SAT_RW_ORDER.indexOf(b.skill_id) ||
+        a.difficulty - b.difficulty,
+    );
+  // Math sections generally get harder as they go.
+  if (section === "Math") return [...flat].sort((a, b) => a.difficulty - b.difficulty);
+  // Passage-based sections: whole passages in order (Passage I, II, …), standalone questions after.
+  const sets = units
+    .filter((u) => u.length > 1)
+    .sort((a, b) => groupOf(a[0]!.id) - groupOf(b[0]!.id));
+  const singles = units.filter((u) => u.length === 1).flat();
+  return [...sets.flat(), ...singles];
 }
 
 export function shuffle<T>(arr: T[]): T[] {

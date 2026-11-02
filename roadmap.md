@@ -15,5 +15,9 @@ Setup notes
 - AI features call the Lovable AI gateway from the server (`src/lib/ai.server.ts`, `src/routes/api/tutor.ts`, `src/lib/ai.functions.ts`) and need `LOVABLE_API_KEY`, which Lovable provides when AI is enabled for the project. Optional `AI_MODEL` overrides the default model.
 - Without the key, the tutor shows a setup message and the rest of the app works normally.
 
+- [x] Question bank: 349 original questions added (389 total), enough for a full-length SAT (98) and ACT (170) practice test. Source in `src/lib/question-bank/`; migration `drizzle/migrations/0001_question_bank.sql` is generated from it (`bun scripts/generate-question-bank.ts`).
+
 Next
-- [ ] Grow the verified question bank (ACT especially: 4 per section today)
+- [ ] Expert review of the AI-drafted question bank (flagged `ai_generated` in the database)
+- [ ] SAT student-produced-response (grid-in) math questions, Desmos calculator, reference sheet
+- [ ] Second full-length test's worth of questions so retakes aren't repeats
