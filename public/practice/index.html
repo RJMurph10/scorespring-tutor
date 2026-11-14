@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Official SAT & ACT Practice</title>
+<title>SAT & ACT Practice Tests</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -117,7 +117,7 @@ table.grid th { font-weight: 600; color: var(--muted); font-size: 12.5px; }
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <div class="brand">Official Practice Tests</div>
+  <div class="brand">SAT &amp; ACT Practice Tests</div>
   <nav class="nav" aria-label="Main"><a href="#home" id="navHome">Tests</a><a href="#results" id="navResults">My results</a></nav>
 </div></header>
 <main id="app"></main>
@@ -168,7 +168,7 @@ function load() {
   return { v: 1, custom: [], keys: {}, answers: {}, last: {} };
 }
 function save() { try { localStorage.setItem(LS, JSON.stringify(D)); } catch { toast("Couldn't save — is private browsing on?"); } }
-const tests = () => [...BUILT_IN, ...D.custom];
+const tests = () => BUILT_IN;
 const testById = (id) => tests().find((t) => t.id === id);
 const fmt = (t) => FORMATS[t.format];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -328,15 +328,12 @@ window.addEventListener("hashchange", () => { route(); window.scrollTo({ top: 0 
 function renderHome() {
   const col = (exam, fmtText) => `<section class="col"><h2>${exam}</h2><p class="fmt muted small">${fmtText}</p>
     <div class="cards">${tests().filter((t) => fmt(t).exam === exam).map(card).join("")}</div>
-    ${exam === "ACT" ? `<div style="margin-top:10px"><button class="btn" onclick="addTestDialog()">+ Add a test</button></div>` : ""}</section>`;
+</section>`;
   document.getElementById("app").innerHTML = `<div class="wrap page">
-    <h1>Official SAT &amp; ACT practice tests</h1>
-    <p class="lede muted">Open the official test PDF next to this page and fill in the answer sheet. No timer, every section open, and each answer is checked only when you submit it. Your answers save after every submit.</p>
     <div class="cols">
-      ${col("SAT", "College Board's 8 official full-length tests · Reading and Writing 27 + 27, Math 22 + 22")}
-      ${col("ACT", "ACT's free official tests · English 50, Math 45, Reading 36, Science 40")}
+      ${col("SAT", "Reading and Writing 27 + 27 · Math 22 + 22")}
+      ${col("ACT", "English 50 · Math 45 · Reading 36 · Science 40")}
     </div>
-    <p class="muted small" style="margin-top:28px;max-width:72ch">The tests and answer keys belong to College Board and ACT and stay on their websites. An answer key you load is read on this device and saved only in this browser.</p>
   </div>`;
 }
 function card(t) {
@@ -365,10 +362,7 @@ function renderTest(t) {
   const keyPanel = `<div class="panel" id="keyPanel">
       <h2>${ready ? "Answer key loaded" : kc ? `Answer key: ${kc} of ${totalQs(t)} answers found` : "Load the answer key first"}</h2>
       ${ready ? `<p class="muted small" style="margin:0">All ${totalQs(t)} answers are ready. They stay hidden until you submit each question.</p>` : `
-      <ol class="steps">
-        <li>Download the official ${t.keyUrl ? "answer key" : "test"} PDF${t.keyUrl || t.testUrl ? ` with the button${t.keyUrl ? " “Answer key PDF”" : " “Open test PDF”"} above` : ""}. ${esc(t.keyHint || "Use the official PDF that contains the scoring key.")}</li>
-        <li>Drop that PDF here or choose it. This page reads the answers from the file without showing them to you.</li>
-      </ol>
+      <p class="small muted" style="margin:0">Download the ${t.keyUrl ? "answer key PDF" : "test PDF (the key is at the back)"} above, then drop it here. The answers stay hidden.</p>
       <div class="drop" id="drop"><p style="margin:0 0 8px">Drop the PDF here</p>
         <label class="btn primary">Choose PDF<input type="file" accept="application/pdf,.pdf" id="keyFile" hidden></label></div>
       ${kc ? `<p class="small" style="margin:10px 0 0">${F.sections.map((s, i) => `${esc(s.name)}: ${(D.keys[t.id][i] || []).filter(Boolean).length}/${s.n}`).join(" · ")}</p>` : ""}
@@ -396,15 +390,14 @@ function renderTest(t) {
         <div class="row" style="margin-top:10px">
           <button class="btn" onclick="replaceKey('${t.id}')">Load a different answer key</button>
           <button class="btn danger" onclick="clearAnswers('${t.id}')">Clear my answers</button>
-          ${t.id.startsWith("custom-") ? `<button class="btn danger" onclick="removeTest('${t.id}')">Remove this test</button>` : ""}
         </div></details>`;
   }
   document.getElementById("app").innerHTML = `<div class="wrap page" style="padding-top:16px">
     <div class="row" style="margin-bottom:12px"><a href="#home" class="btn ghost">← All tests</a>
       <h1 style="font-size:20px;margin-right:auto">${esc(t.name)}</h1>
       ${ready ? `<span class="muted small num">${st.a}/${st.n} answered · ${st.c} correct</span><a class="btn" href="#results/${t.id}">Results</a>` : ""}</div>
-    <div class="panel" style="display:grid;gap:10px">
-      <div class="small muted">${esc(F.label)} · ${F.sections.map((s) => `${esc(s.name)} ${s.n}`).join(" · ")}</div>${links}</div>
+    <div style="margin-bottom:14px">
+${links}</div>
     ${ready ? "" : keyPanel}
     ${body}
   </div>`;
@@ -536,7 +529,7 @@ function renderResults() {
   const chosen = S.resultsFor === "all" ? started : [testById(S.resultsFor)].filter(Boolean);
   const picker = `<div class="picker"><button class="btn ${S.resultsFor === "all" ? "primary" : ""}" onclick="S.resultsFor='all';renderResults()">All tests</button>${started.map((t) =>
     `<button class="btn ${S.resultsFor === t.id ? "primary" : ""}" onclick="S.resultsFor='${t.id}';renderResults()">${esc(t.name)}</button>`).join("")}</div>`;
-  let html = `<div class="wrap page"><h1>My results</h1><p class="lede muted">Built only from answers you've submitted.</p>`;
+  let html = `<div class="wrap page"><h1 style="margin-bottom:14px">My results</h1>`;
   if (!started.length) {
     document.getElementById("app").innerHTML = html + `<div class="panel" style="text-align:center;padding:28px"><p class="muted" style="margin:0">No answers yet. Open a test, load its key, and submit a few answers.</p></div></div>`;
     return;
@@ -583,8 +576,6 @@ function renderResults() {
         return `<div style="margin-top:12px"><b class="small">${esc(s.name)}</b> <span class="small muted">${m.length ? `${m.length} missed` : secStats(t, i).a ? "none missed" : "not started"}</span>
           <div class="missed">${m.map((q) => `<button onclick="goTo('${t.id}',${i},${q})">${q}</button>`).join("")}</div></div>`; }).join("")}</div>`;
   }
-  html += `<div class="panel"><h2>Back up my answers</h2><p class="small muted" style="margin:0 0 10px">Everything is saved in this browser. Download a backup to move it to another device or keep it safe.</p>
-    <div class="row"><button class="btn" onclick="exportData()">Download backup</button><label class="btn">Restore from backup<input type="file" accept="application/json,.json" hidden onchange="importData(this.files[0])"></label></div></div>`;
   document.getElementById("app").innerHTML = html + `</div>`;
 }
 function goTo(id, si, q) {
