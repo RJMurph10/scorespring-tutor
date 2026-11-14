@@ -420,7 +420,7 @@ function renderTest(t) {
         <details style="margin-top:18px"><summary>Options</summary>
           <div class="row" style="margin-top:10px">
             <button class="btn" onclick="replaceFiles('${t.id}')">Load the files again</button>
-            <button class="btn danger" onclick="clearAnswers('${t.id}')">Clear my answers</button></div></details>
+            <button class="btn danger" onclick="clearAnswers('${t.id}')">Restart test</button></div></details>
       </section>
     </div></div>`;
   renderSheet(t);
@@ -577,8 +577,8 @@ function replaceFiles(id) {
   });
 }
 function clearAnswers(id) {
-  confirmBox(`Clear every answer in ${testById(id).name}? This can't be undone.`, "Clear answers", () => {
-    D.answers[id] = {}; save(); toast("Answers cleared"); renderTest(testById(id));
+  confirmBox(`Restart ${testById(id).name}? All your answers in this test will be cleared.`, "Restart test", () => {
+    D.answers[id] = {}; D.last[id] = 0; save(); toast("Test restarted"); S.testId = null; renderTest(testById(id));
   });
 }
 function removeTest(id) {

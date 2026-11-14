@@ -315,7 +315,7 @@ function card(t) {
     <div class="bar" role="progressbar" aria-label="Answered" aria-valuenow="${s.answered}" aria-valuemax="${s.total}"><i style="width:${pct(s.answered, s.total)}%"></i></div>
     <div class="row">
       <span class="muted small num" style="margin-right:auto">${s.answered} of ${s.total} answered${s.answered ? ` · ${s.correct} correct (${pct(s.correct, s.answered)}%)` : ""}</span>
-      ${s.answered ? `<button class="btn ghost" onclick="S.resultsFor='${t.id}';location.hash='results'">Results</button>` : ""}
+      ${s.answered ? `<button class="btn ghost" onclick="resetTest('${t.id}')">Restart</button><button class="btn ghost" onclick="S.resultsFor='${t.id}';location.hash='results'">Results</button>` : ""}
       <a class="btn primary" style="text-decoration:none" href="#${t.id}">${s.answered ? (p.finishedAt ? "Review" : "Continue") : "Start"}</a>
     </div>
   </article>`;
@@ -395,6 +395,7 @@ function renderTest() {
       <a href="#tests" class="btn ghost" style="text-decoration:none">← All tests</a>
       <h1 style="font-size:19px;margin-right:auto">${esc(t.name)}</h1>
       <span class="muted small num">${st.answered}/${st.total} answered · ${st.correct} correct</span>
+      ${st.answered ? `<button class="btn" onclick="resetTest('${t.id}')">Restart test</button>` : ""}
       <button class="btn" onclick="S.resultsFor='${t.id}';location.hash='results'">Results</button>
     </div>
     <div class="tabs" role="tablist" aria-label="Sections">${tabs}</div>
@@ -545,7 +546,7 @@ function renderResults() {
       const si = x.t.sections.indexOf(x.s); const qi = x.s.questionIds.indexOf(x.q.id);
       return `<button onclick="jump('${x.t.id}',${si},${qi})"><b>${esc(x.t.name)}</b> · ${esc(x.s.name)} #${qi + 1} — <span class="muted">${(() => { const t = (x.q.exam === "SAT" && x.q.passage ? x.q.passage : x.q.prompt).replace(/__/g, ""); return esc(t.slice(0, 90)) + (t.length > 90 ? "…" : ""); })()}</span></button>`;
     }).join("")}</div></div>` : ""}
-    ${S.resultsFor !== "all" ? `<div style="margin-top:8px"><button class="btn danger" onclick="resetTest('${S.resultsFor}')">Clear my answers for this test</button></div>` : ""}
+    ${S.resultsFor !== "all" ? `<div style="margin-top:8px"><button class="btn danger" onclick="resetTest('${S.resultsFor}')">Restart this test</button></div>` : ""}
   </div>`;
 }
 function jump(testId, si, qi) {
@@ -555,9 +556,11 @@ function jump(testId, si, qi) {
 }
 function resetTest(id) {
   const t = testById(id);
-  confirmBox(`Clear every answer in ${t.name}? This can't be undone.`, "Clear answers", () => {
+  confirmBox(`Restart ${t.name}? All your answers in this test will be cleared and you'll start again at question 1.`, "Restart test", () => {
     S.progress[id] = { answers: {}, last: null, startedAt: null, finishedAt: null };
-    persist(id); toast("Answers cleared"); renderResults();
+    persist(id);
+    if (S.view.testId === id) { S.view.testId = null; openTest(t); window.scrollTo({ top: 0 }); } else route();
+    toast(`${t.name} restarted`);
   });
 }
 
