@@ -46,7 +46,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.ghost { border-color: transparent; background: transparent; }
 .btn.danger { color: var(--bad); }
-.page { padding: 26px 0 64px; }
+.page { padding-top: 26px; padding-bottom: 64px; }
 .page h1 { font-size: 25px; }
 .lede { max-width: 66ch; margin: 6px 0 22px; }
 .cols { display: grid; gap: 28px; grid-template-columns: 1fr 1fr; }
@@ -112,6 +112,18 @@ table.grid th { font-weight: 600; color: var(--muted); font-size: 12.5px; }
 .dialog label { display: grid; gap: 4px; font-size: 13.5px; font-weight: 500; }
 .dialog .row { justify-content: flex-end; }
 .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--sheet); padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 30; max-width: 90vw; }
+.wrap.wide { max-width: 1500px; }
+.split { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(330px, 1fr); gap: 16px; align-items: start; }
+.viewer, .answers { height: calc(100vh - 150px); min-height: 420px; }
+.viewer { display: flex; flex-direction: column; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.vbar { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-bottom: 1px solid var(--line); }
+.pages { flex: 1; overflow: auto; background: #8a919c; padding: 12px; display: grid; gap: 12px; justify-items: center; align-content: start; }
+.pg { width: 100%; background: #fff; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.pg canvas { width: 100%; height: 100%; display: block; position: absolute; inset: 0; }
+.pgn { position: absolute; top: 45%; left: 0; right: 0; text-align: center; color: #9aa; font-size: 13px; }
+.answers { overflow-y: auto; padding-right: 2px; }
+.answers .tabs { flex-wrap: wrap; position: sticky; top: 0; background: var(--paper); z-index: 2; padding-top: 0; }
+@media (max-width: 900px) { .split { grid-template-columns: 1fr; } .viewer { height: 62vh; } .answers { height: auto; overflow: visible; } }
 .note { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 13.5px; }
 </style>
 </head>
@@ -164,8 +176,8 @@ const BUILT_IN = [
 const LS = "official-practice-v1";
 let D = load();
 function load() {
-  try { const d = JSON.parse(localStorage.getItem(LS) || "null"); if (d && d.v === 1) return d; } catch {}
-  return { v: 1, custom: [], keys: {}, answers: {}, last: {} };
+  try { const d = JSON.parse(localStorage.getItem(LS) || "null"); if (d && d.v === 1) { d.pdf ||= {}; d.scroll ||= {}; return d; } } catch {}
+  return { v: 1, custom: [], keys: {}, answers: {}, last: {}, pdf: {}, scroll: {} };
 }
 function save() { try { localStorage.setItem(LS, JSON.stringify(D)); } catch { toast("Couldn't save — is private browsing on?"); } }
 const tests = () => BUILT_IN;
@@ -260,12 +272,15 @@ function keyPages(pages, sections) {
   return keep.length ? keep : pages;
 }
 let pdfjs = null;
-async function pdfText(file) {
+async function pdfLib() {
   if (!pdfjs) {
     pdfjs = await import("./vendor/pdf.min.mjs");
     pdfjs.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdf.worker.min.mjs", location.href).href;
   }
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  return pdfjs;
+}
+async function openPdf(bytes) { return (await pdfLib()).getDocument({ data: new Uint8Array(bytes).slice() }).promise; }
+async function pdfPagesText(doc) {
   const pages = [];
   for (let p = 1; p <= doc.numPages; p++) {
     const c = await (await doc.getPage(p)).getTextContent();
@@ -273,6 +288,15 @@ async function pdfText(file) {
   }
   return pages;
 }
+/* The official test file is kept in this browser (IndexedDB) so the test shows right on the page. */
+const IDB = {
+  db: null,
+  open() { return (this.db ||= new Promise((res, rej) => { const r = indexedDB.open("practice-pdfs", 1); r.onupgradeneeded = () => r.result.createObjectStore("files"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
+  async run(mode, fn) { const db = await this.open(); return new Promise((res, rej) => { const tx = db.transaction("files", mode); const q = fn(tx.objectStore("files")); tx.oncomplete = () => res(q && q.result); tx.onerror = () => rej(tx.error); }); },
+  get(k) { return this.run("readonly", (st) => st.get(k)); },
+  set(k, v) { return this.run("readwrite", (st) => st.put(v, k)); },
+  del(k) { return this.run("readwrite", (st) => st.delete(k)); },
+};
 function keyCount(t) { const k = D.keys[t.id]; return k ? k.reduce((s, sec) => s + sec.filter(Boolean).length, 0) : 0; }
 const totalQs = (t) => fmt(t).sections.reduce((s, x) => s + x.n, 0);
 function keyReady(t) { return keyCount(t) === totalQs(t); }
@@ -337,8 +361,8 @@ function renderHome() {
   </div>`;
 }
 function card(t) {
-  const st = testStats(t); const ready = keyReady(t);
-  const status = !ready ? ["warn", "Needs answer key"] : st.a === st.n ? ["done", "Finished"] : st.a ? ["going", "In progress"] : ["", "Not started"];
+  const st = testStats(t); const ready = keyReady(t) && hasPdf(t);
+  const status = !ready ? ["warn", "Needs setup"] : st.a === st.n ? ["done", "Finished"] : st.a ? ["going", "In progress"] : ["", "Not started"];
   return `<article class="card">
     <div class="row"><h3>${esc(t.name)}</h3><span class="pill ${status[0]}">${status[1]}</span></div>
     <div class="bar" role="progressbar" aria-label="Answered" aria-valuenow="${st.a}" aria-valuemax="${st.n}"><i style="width:${pct(st.a, st.n)}%"></i></div>
@@ -349,59 +373,117 @@ function card(t) {
 }
 
 /* ---------- a test ---------- */
+function hasPdf(t) { return !!(D.pdf && D.pdf[t.id]); }
 function renderTest(t) {
-  const F = fmt(t); const ready = keyReady(t); const kc = keyCount(t);
-  if (S.testId !== t.id) { S.testId = t.id; S.sel = {}; S.sec = (D.last[t.id] ?? 0); }
+  const F = fmt(t); const ready = keyReady(t) && hasPdf(t); const kc = keyCount(t);
+  if (S.testId !== t.id) { S.testId = t.id; S.sel = {}; S.sec = (D.last[t.id] ?? 0); S.doc = null; }
   S.sec = Math.min(S.sec, F.sections.length - 1);
-  const st = testStats(t);
-  const links = `<div class="row" style="gap:8px">
-      ${t.testUrl ? `<a class="btn primary" href="${esc(t.testUrl)}" target="_blank" rel="noopener">Open test PDF ↗</a>` : ""}
-      ${t.keyUrl ? `<a class="btn" href="${esc(t.keyUrl)}" target="_blank" rel="noopener">Answer key PDF ↗</a>` : ""}
-      ${!t.testUrl ? `<a class="btn" href="${F.exam === "SAT" ? SAT_PAGE : ACT_PAGE}" target="_blank" rel="noopener">Official practice page ↗</a>` : ""}
-    </div>`;
-  const keyPanel = `<div class="panel" id="keyPanel">
-      <h2>${ready ? "Answer key loaded" : kc ? `Answer key: ${kc} of ${totalQs(t)} answers found` : "Load the answer key first"}</h2>
-      ${ready ? `<p class="muted small" style="margin:0">All ${totalQs(t)} answers are ready. They stay hidden until you submit each question.</p>` : `
-      <p class="small muted" style="margin:0">Download the ${t.keyUrl ? "answer key PDF" : "test PDF (the key is at the back)"} above, then drop it here. The answers stay hidden.</p>
-      <div class="drop" id="drop"><p style="margin:0 0 8px">Drop the PDF here</p>
-        <label class="btn primary">Choose PDF<input type="file" accept="application/pdf,.pdf" id="keyFile" hidden></label></div>
-      ${kc ? `<p class="small" style="margin:10px 0 0">${F.sections.map((s, i) => `${esc(s.name)}: ${(D.keys[t.id][i] || []).filter(Boolean).length}/${s.n}`).join(" · ")}</p>` : ""}
-      <details style="margin-top:12px"><summary>The PDF didn't work? Paste the key text instead</summary>
-        <p class="small muted">Open the answer key in the PDF, select the table for one section, copy, and paste it here. Choose the section first.</p>
-        <div class="row" style="margin-bottom:8px"><select id="pasteSec">${F.sections.map((s, i) => `<option value="${i}">${esc(s.name)}</option>`).join("")}</select></div>
-        <textarea id="pasteText" placeholder="Paste the copied answer key text"></textarea>
-        <div class="row" style="margin-top:8px"><button class="btn" onclick="pasteKey('${t.id}')">Read pasted key</button></div>
-      </details>`}
-    </div>`;
-  let body = "";
-  if (ready) {
-    const tabs = F.sections.map((s, i) => { const x = secStats(t, i); return `<button class="tab" role="tab" aria-selected="${i === S.sec}" onclick="setSec(${i})">${esc(s.name)} <small class="num">${x.a}/${x.n}</small></button>`; }).join("");
-    const sec = F.sections[S.sec]; const A = answersOf(t); const key = D.keys[t.id][S.sec];
-    const rows = [];
-    for (let q = 1; q <= sec.n; q++) rows.push(qRow(t, sec, q, A[S.sec + ":" + q], key[q - 1]));
-    body = `<div class="tabs" role="tablist" aria-label="Sections">${tabs}</div>
-      <div class="sheet" aria-label="${esc(sec.name)} answer sheet">${rows.join("")}</div>
-      <div class="row" style="margin-top:14px">
-        ${S.sec > 0 ? `<button class="btn" onclick="setSec(${S.sec - 1})">← ${esc(F.sections[S.sec - 1].name)}</button>` : ""}
-        <span style="margin-right:auto"></span>
-        ${S.sec < F.sections.length - 1 ? `<button class="btn primary" onclick="setSec(${S.sec + 1})">${esc(F.sections[S.sec + 1].name)} →</button>` : `<a class="btn primary" href="#results/${t.id}">See results</a>`}
-      </div>
-      <details style="margin-top:22px"><summary>Answer key and other options</summary>
-        <div class="row" style="margin-top:10px">
-          <button class="btn" onclick="replaceKey('${t.id}')">Load a different answer key</button>
-          <button class="btn danger" onclick="clearAnswers('${t.id}')">Clear my answers</button>
-        </div></details>`;
-  }
-  document.getElementById("app").innerHTML = `<div class="wrap page" style="padding-top:16px">
-    <div class="row" style="margin-bottom:12px"><a href="#home" class="btn ghost">← All tests</a>
+  const head = `<div class="row" style="margin-bottom:12px"><a href="#home" class="btn ghost">← All tests</a>
       <h1 style="font-size:20px;margin-right:auto">${esc(t.name)}</h1>
-      ${ready ? `<span class="muted small num">${st.a}/${st.n} answered · ${st.c} correct</span><a class="btn" href="#results/${t.id}">Results</a>` : ""}</div>
-    <div style="margin-bottom:14px">
-${links}</div>
-    ${ready ? "" : keyPanel}
-    ${body}
-  </div>`;
-  if (!ready) wireDrop(t);
+      ${ready ? `<span class="muted small num" id="totals"></span><a class="btn" href="#results/${t.id}">Results</a>` : ""}</div>`;
+  if (!ready) {
+    const needTest = !hasPdf(t), needKey = !keyReady(t);
+    const files = [needTest ? `the <b>test PDF</b>` : "", needKey && t.keyUrl ? `the <b>answer key PDF</b>` : ""].filter(Boolean).join(" and ");
+    document.getElementById("app").innerHTML = `<div class="wrap page" style="padding-top:16px">${head}
+      <div class="panel" id="keyPanel">
+        <h2>One-time setup for this test</h2>
+        <ol class="steps">
+          <li>Download ${files || "the test PDF"}:
+            <span class="row" style="display:inline-flex;gap:8px;margin-left:4px">
+              ${needTest || !t.keyUrl ? `<a class="btn" href="${esc(t.testUrl)}" target="_blank" rel="noopener">Test PDF ↗</a>` : ""}
+              ${needKey && t.keyUrl ? `<a class="btn" href="${esc(t.keyUrl)}" target="_blank" rel="noopener">Answer key PDF ↗</a>` : ""}</span></li>
+          <li>Drop ${needTest && needKey && t.keyUrl ? "both files" : "it"} here. ${t.keyUrl ? "" : "The answer key is at the back of the same file. "}After this, the whole test is on this page and the answers stay hidden until you submit.</li>
+        </ol>
+        <div class="drop" id="drop"><p style="margin:0 0 8px">Drop the PDF${needTest && needKey && t.keyUrl ? "s" : ""} here</p>
+          <label class="btn primary">Choose file${needTest && needKey && t.keyUrl ? "s" : ""}<input type="file" accept="application/pdf,.pdf" id="keyFile" multiple hidden></label></div>
+        <p class="small" style="margin:10px 0 0">${hasPdf(t) ? "✓ Test loaded" : "Test not loaded yet"} · ${keyReady(t) ? "✓ Answer key loaded" : kc ? `Answer key: ${kc} of ${totalQs(t)} found` : "Answer key not loaded yet"}</p>
+        ${kc && !keyReady(t) ? `<details style="margin-top:12px"><summary>Some answers are missing? Paste that section's key</summary>
+          <p class="small muted">Open the answer key, select one section's table, copy it, and paste it here.</p>
+          <div class="row" style="margin-bottom:8px"><select id="pasteSec">${F.sections.map((s, i) => `<option value="${i}">${esc(s.name)} (${(D.keys[t.id][i] || []).filter(Boolean).length}/${s.n})</option>`).join("")}</select></div>
+          <textarea id="pasteText" placeholder="Paste the copied answer key text"></textarea>
+          <div class="row" style="margin-top:8px"><button class="btn" onclick="pasteKey('${t.id}')">Read pasted key</button></div></details>` : ""}
+      </div></div>`;
+    return wireDrop(t);
+  }
+  document.getElementById("app").innerHTML = `<div class="wrap wide page" style="padding-top:16px">${head}
+    <div class="split">
+      <section class="viewer" aria-label="Test">
+        <div class="vbar"><span class="small muted" id="pageInfo">Loading test…</span>
+          <span style="margin-left:auto"></span>
+          <button class="btn ghost" onclick="zoom(-1)" aria-label="Smaller">−</button>
+          <button class="btn ghost" onclick="zoom(1)" aria-label="Bigger">+</button></div>
+        <div class="pages" id="pages"></div>
+      </section>
+      <section class="answers" aria-label="Answer sheet">
+        <div class="tabs" role="tablist" aria-label="Sections" id="tabs"></div>
+        <div id="sheetPane"></div>
+        <details style="margin-top:18px"><summary>Options</summary>
+          <div class="row" style="margin-top:10px">
+            <button class="btn" onclick="replaceFiles('${t.id}')">Load the files again</button>
+            <button class="btn danger" onclick="clearAnswers('${t.id}')">Clear my answers</button></div></details>
+      </section>
+    </div></div>`;
+  renderSheet(t);
+  mountViewer(t);
+}
+function renderSheet(t) {
+  const F = fmt(t); const st = testStats(t);
+  const tot = document.getElementById("totals"); if (tot) tot.textContent = `${st.a}/${st.n} answered · ${st.c} correct`;
+  document.getElementById("tabs").innerHTML = F.sections.map((s, i) => { const x = secStats(t, i); return `<button class="tab" role="tab" aria-selected="${i === S.sec}" onclick="setSec(${i})">${esc(s.name)} <small class="num">${x.a}/${x.n}</small></button>`; }).join("");
+  const sec = F.sections[S.sec]; const A = answersOf(t); const key = D.keys[t.id][S.sec];
+  const rows = [];
+  for (let q = 1; q <= sec.n; q++) rows.push(qRow(t, sec, q, A[S.sec + ":" + q], key[q - 1]));
+  document.getElementById("sheetPane").innerHTML = `<div class="sheet" aria-label="${esc(sec.name)} answer sheet">${rows.join("")}</div>
+    <div class="row" style="margin-top:12px">
+      ${S.sec > 0 ? `<button class="btn" onclick="setSec(${S.sec - 1})">← ${esc(F.sections[S.sec - 1].name)}</button>` : ""}
+      <span style="margin-right:auto"></span>
+      ${S.sec < F.sections.length - 1 ? `<button class="btn primary" onclick="setSec(${S.sec + 1})">${esc(F.sections[S.sec + 1].name)} →</button>` : `<a class="btn primary" href="#results/${t.id}">See results</a>`}
+    </div>`;
+}
+/* ---------- the test, shown on the page ---------- */
+async function mountViewer(t) {
+  const box = document.getElementById("pages"); const info = document.getElementById("pageInfo");
+  try {
+    const bytes = await IDB.get(t.id);
+    if (!bytes) { D.pdf[t.id] = false; save(); return renderTest(t); }
+    const doc = await openPdf(bytes);
+    if (S.testId !== t.id || !document.getElementById("pages")) return;
+    S.doc = doc;
+    const first = await doc.getPage(1); const vp = first.getViewport({ scale: 1 });
+    S.ratio = vp.height / vp.width;
+    box.innerHTML = Array.from({ length: doc.numPages }, (_, i) => `<div class="pg" data-p="${i + 1}" style="aspect-ratio:${vp.width}/${vp.height}"><span class="pgn">${i + 1}</span></div>`).join("");
+    info.textContent = `${doc.numPages} pages`;
+    const io = new IntersectionObserver((ents) => ents.forEach((e) => { if (e.isIntersecting) drawPage(e.target); }), { root: box, rootMargin: "800px 0px" });
+    box.querySelectorAll(".pg").forEach((el) => io.observe(el));
+    S.io = io;
+    const saved = (D.scroll || {})[t.id];
+    if (saved) box.scrollTop = saved * box.scrollHeight;
+    let tmr; box.onscroll = () => {
+      clearTimeout(tmr);
+      tmr = setTimeout(() => { (D.scroll ||= {})[t.id] = box.scrollTop / box.scrollHeight; save();
+        const pgs = [...box.querySelectorAll(".pg")]; const mid = box.scrollTop + box.clientHeight / 3;
+        const cur = pgs.find((el) => el.offsetTop + el.offsetHeight > mid); if (cur) info.textContent = `Page ${cur.dataset.p} of ${doc.numPages}`; }, 250);
+    };
+  } catch (e) {
+    console.error(e); info.textContent = "Couldn't show the test. Use Options → Load the files again.";
+  }
+}
+async function drawPage(el) {
+  if (el.dataset.done || !S.doc) return; el.dataset.done = "1";
+  const page = await S.doc.getPage(Number(el.dataset.p));
+  const w = el.clientWidth; const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const vp = page.getViewport({ scale: (w / page.getViewport({ scale: 1 }).width) * dpr });
+  const c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height;
+  await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+  el.appendChild(c);
+}
+function zoom(d) {
+  const box = document.getElementById("pages"); if (!box) return;
+  S.zoom = Math.max(60, Math.min(200, (S.zoom || 100) + d * 20));
+  const pos = box.scrollTop / box.scrollHeight;
+  box.querySelectorAll(".pg").forEach((el) => { el.style.width = S.zoom + "%"; el.querySelector("canvas")?.remove(); delete el.dataset.done; });
+  box.scrollTop = pos * box.scrollHeight;
+  S.io && box.querySelectorAll(".pg").forEach((el) => { S.io.unobserve(el); S.io.observe(el); });
 }
 function qRow(t, sec, q, ans, correct) {
   const k = S.sec + ":" + q;
@@ -421,7 +503,10 @@ function qRow(t, sec, q, ans, correct) {
     : `<button class="btn primary" id="sb${q}" onclick="submitQ('${t.id}',${q})" ${S.sel[k] ? "" : "disabled"}>Submit</button>`;
   return `<div class="q ${ans ? (ans.ok ? "ok" : "no") : ""}" id="q${q}"><span class="n">${q}</span>${input}<span class="act">${act}</span></div>`;
 }
-function setSec(i) { const t = testById(S.testId); S.sec = i; D.last[t.id] = i; save(); renderTest(t); window.scrollTo({ top: 0 }); }
+function setSec(i) {
+  const t = testById(S.testId); S.sec = i; D.last[t.id] = i; save();
+  if (document.getElementById("sheetPane")) { renderSheet(t); document.querySelector(".answers").scrollTop = 0; } else renderTest(t);
+}
 function pick(q, L) { S.sel[S.sec + ":" + q] = L; rerenderRow(q); }
 function rerenderRow(q) {
   const t = testById(S.testId); const sec = fmt(t).sections[S.sec];
@@ -437,29 +522,39 @@ function submitQ(id, q) {
   rerenderRow(q);
   const x = secStats(t, S.sec);
   document.querySelectorAll(".tab small")[S.sec].textContent = `${x.a}/${x.n}`;
+  const st = testStats(t); const tot = document.getElementById("totals"); if (tot) tot.textContent = `${st.a}/${st.n} answered · ${st.c} correct`;
 }
 
-/* ---------- loading keys ---------- */
+/* ---------- loading the official files ---------- */
 function wireDrop(t) {
   const drop = document.getElementById("drop"); const input = document.getElementById("keyFile");
-  input.onchange = () => input.files[0] && readKeyFile(t, input.files[0]);
+  input.onchange = () => input.files.length && readFiles(t, [...input.files]);
   drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
   drop.ondragleave = () => drop.classList.remove("over");
-  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) readKeyFile(t, f); };
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); const f = [...e.dataTransfer.files]; if (f.length) readFiles(t, f); };
 }
-async function readKeyFile(t, file) {
-  const drop = document.getElementById("drop"); drop.innerHTML = `<p style="margin:0">Reading ${esc(file.name)}…</p>`;
-  try {
-    const pages = await pdfText(file);
-    const secs = fmt(t).sections;
-    storeKey(t, parseKey(keyPages(pages, secs), secs));
-    const n = keyCount(t);
-    if (!n) toast("Couldn't find an answer key in that PDF. Check it's the right file, or paste the key text.");
-    else if (keyReady(t)) toast("Answer key loaded. Answers stay hidden until you submit.");
-    else toast(`Found ${n} of ${totalQs(t)} answers. Paste the missing section's key to finish.`);
-  } catch (e) {
-    console.error(e); toast("Couldn't read that file. Try the paste option instead.");
+async function readFiles(t, files) {
+  const drop = document.getElementById("drop"); drop.innerHTML = `<p style="margin:0">Reading ${files.length > 1 ? "files" : esc(files[0].name)}…</p>`;
+  const secs = fmt(t).sections; D.pdf ||= {};
+  for (const file of files) {
+    try {
+      const bytes = await file.arrayBuffer();
+      const doc = await openPdf(bytes);
+      const pages = await pdfPagesText(doc);
+      const parsed = parseKey(keyPages(pages, secs), secs);
+      const found = parsed.reduce((a, x) => a + x.filter(Boolean).length, 0);
+      if (found) storeKey(t, parsed);
+      // The test itself: a long file, or one that isn't just an answer key.
+      const looksLikeKeyOnly = /scor|answer|key/i.test(file.name) && pages.length < 20;
+      const isTest = !t.keyUrl || (!looksLikeKeyOnly && (pages.length >= 20 || found < totalQs(t) / 2));
+      if (isTest) { await IDB.set(t.id, bytes); D.pdf[t.id] = true; save(); }
+      if (!found && !isTest) toast(`${file.name} doesn't look like this test or its answer key.`);
+    } catch (e) { console.error(e); toast(`Couldn't read ${file.name}.`); }
   }
+  if (keyReady(t) && hasPdf(t)) toast("All set. Answers stay hidden until you submit.");
+  else if (!hasPdf(t)) toast("Now add the test PDF.");
+  else if (!keyCount(t)) toast(t.keyUrl ? "Now add the answer key PDF." : "Couldn't find the answer key in that file.");
+  else toast(`Found ${keyCount(t)} of ${totalQs(t)} answers.`);
   renderTest(t);
 }
 function pasteKey(id) {
@@ -474,9 +569,11 @@ function pasteKey(id) {
   toast(`${sec.name}: ${found} of ${sec.n} answers found.`);
   renderTest(t);
 }
-function replaceKey(id) {
-  confirmBox("Load a different answer key? Answers you've already submitted stay as they were graded.", "Continue", () => {
-    delete D.keys[id]; save(); renderTest(testById(id));
+function replaceFiles(id) {
+  confirmBox("Load this test's files again? Answers you've already submitted stay as they were graded.", "Continue", async () => {
+    delete D.keys[id]; (D.pdf ||= {})[id] = false; save();
+    try { await IDB.del(id); } catch {}
+    S.testId = null; renderTest(testById(id));
   });
 }
 function clearAnswers(id) {
