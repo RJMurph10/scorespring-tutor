@@ -167,6 +167,15 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .scrim { position: fixed; inset: 0; background: rgba(10, 14, 22, .45); display: grid; place-items: center; padding: 16px; z-index: 20; }
 .dialog { background: var(--sheet); border-radius: 14px; padding: 20px; max-width: 420px; width: 100%; border: 1px solid var(--line); }
 .dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.frac { display: inline-flex; flex-direction: column; align-items: stretch; vertical-align: middle; text-align: center; margin: 0 .12em; font-size: .92em; line-height: 1.2; }
+.frac > .fn { border-bottom: 1.5px solid currentColor; padding: 0 .2em .12em; }
+.frac > .fd { padding: .12em .2em 0; }
+.frac sup { vertical-align: .45em; }
+.choice .frac, .feedback .frac { font-size: .9em; }
+sup { font-size: .72em; line-height: 0; vertical-align: .55em; }
+.rad { white-space: nowrap; }
+.rad-in { border-top: 1.5px solid currentColor; padding: .05em .1em 0 .1em; margin-left: .03em; }
+.prompt { line-height: 1.9; }
 .sprbox { display: grid; gap: 6px; max-width: 320px; }
 .sprbox input { font-size: 18px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); font-variant-numeric: tabular-nums; }
 .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--sheet); padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 30; }
@@ -251,6 +260,84 @@ function roughScores(t) {
   }
   return { out, total, extra };
 }
+
+/* ---------------- math formatting ----------------
+   Turns plain-text math into what a printed test shows: 3/4 and (x − 3)/(x + 2) become stacked
+   fractions, x^(−1) becomes a raised exponent, and √(…) gets a bar over everything under the root. */
+const ATOM_CH = /[A-Za-z0-9.π²³⁴ˣʸⁿ]/;
+function mathTokens(s, i = 0, closing = false) {
+  const out = [];
+  while (i < s.length) {
+    const ch = s[i];
+    if (ch === "(") {
+      const r = mathTokens(s, i + 1, true);
+      if (r.closed) { out.push({ k: "grp", inner: r.out }); i = r.i; continue; }
+      out.push({ k: "t", v: "(" }); i++; continue;
+    }
+    if (ch === ")" && closing) return { out, i: i + 1, closed: true };
+    if (ch === "^" || ch === "/") { out.push({ k: "op", v: ch }); i++; continue; }
+    if (ch === "√") { out.push({ k: "rad" }); i++; continue; }
+    if (ATOM_CH.test(ch) && !(ch === "." && !/\d/.test(s[i + 1] || ""))) { let j = i; while (j < s.length && ATOM_CH.test(s[j]) && !(s[j] === "." && !/\d/.test(s[j + 1] || ""))) j++; out.push({ k: "w", v: s.slice(i, j) }); i = j; continue; }
+    const last = out[out.length - 1];
+    if (last && last.k === "t") last.v += ch; else out.push({ k: "t", v: ch });
+    i++;
+  }
+  return { out, i, closed: false };
+}
+const FRAC_ATOM = /^(\d+(\.\d+)?|\.\d+)?[A-Za-zπ]?[²³⁴ˣʸ]?$/;
+const isOperand = (n) => n && (n.k === "grp" || n.k === "sup" || n.k === "radn" || (n.k === "w" && n.v.length <= 6 && FRAC_ATOM.test(n.v)));
+function mathTree(tokens) {
+  let a = tokens.map((n) => (n.k === "grp" ? { k: "grp", inner: mathTree(n.inner) } : n));
+  // square roots: √49, √(100 − 36)
+  for (let i = a.length - 2; i >= 0; i--) if (a[i].k === "rad" && (a[i + 1].k === "grp" || a[i + 1].k === "w")) a.splice(i, 2, { k: "radn", body: a[i + 1] });
+  // exponents: x^2, x^(−1), x^(1/2), x^-1
+  for (let i = 1; i < a.length - 1; i++) {
+    if (!(a[i].k === "op" && a[i].v === "^") || !a[i - 1] || a[i - 1].k === "t") continue;
+    let exp = a[i + 1], take = 1;
+    if (exp.k === "t" && /^[-−]$/.test(exp.v) && a[i + 2] && a[i + 2].k === "w") { exp = { k: "t", v: "−" + a[i + 2].v }; take = 2; }
+    if (!(exp.k === "grp" || exp.k === "w" || exp.k === "t")) continue;
+    a.splice(i - 1, 2 + take, { k: "sup", base: a[i - 1], exp }); i--;
+  }
+  // fractions: 3/4, x/3, (x − 3)(x + 3) / ((x + 3)(x − 2))
+  for (let i = 1; i < a.length - 1; i++) {
+    if (!(a[i].k === "op" && a[i].v === "/")) continue;
+    let l = i - 1, r = i + 1, spaced = false;
+    if (a[l].k === "t" && a[l].v === " ") { l--; spaced = true; }
+    if (a[r] && a[r].k === "t" && a[r].v === " ") { r++; spaced = true; }
+    let ls = l; while (ls >= 0 && isOperand(a[ls])) ls--; ls++;
+    let re = r; while (re < a.length && isOperand(a[re])) re++;
+    if (ls > l || re <= r) continue;
+    const num = a.slice(ls, l + 1), den = a.slice(r, re);
+    if (spaced && !num.concat(den).some((n) => n.k === "grp")) continue;
+    a.splice(ls, re - ls, { k: "frac", num, den }); i = ls;
+  }
+  return a;
+}
+function mathRender(nodes, inSup = false) {
+  const strip = (list) => (list.length === 1 && list[0].k === "grp" ? list[0].inner : list);
+  return nodes.map((n) => {
+    switch (n.k) {
+      case "t": return esc(n.v.replace(/-(?=[\d.(A-Za-zπ√])/g, "−"));
+      case "w": return esc(n.v);
+      case "op": return esc(n.v);
+      case "rad": return "√";
+      case "grp": return n.inner.length === 1 && n.inner[0].k === "frac" && !inSup ? mathRender(n.inner, inSup) : "(" + mathRender(n.inner, inSup) + ")";
+      case "radn": return `<span class="rad">√<span class="rad-in">${mathRender(n.body.k === "grp" ? n.body.inner : [n.body], inSup)}</span></span>`;
+      case "sup": return mathRender([n.base], inSup) + `<sup>${mathRender(n.exp.k === "grp" ? n.exp.inner : [n.exp], true)}</sup>`;
+      case "frac": return inSup
+        ? mathRender(strip(n.num), true) + "⁄" + mathRender(strip(n.den), true)
+        : `<span class="frac" role="math" aria-label="${esc(mathPlain(n))}"><span class="fn">${mathRender(strip(n.num))}</span><span class="fd">${mathRender(strip(n.den))}</span></span>`;
+    }
+    return "";
+  }).join("");
+}
+function mathPlain(n) {
+  const t = (list) => list.map((x) => x.k === "t" || x.k === "w" || x.k === "op" ? x.v : x.k === "grp" ? "(" + t(x.inner) + ")" : x.k === "frac" ? t(x.num) + " over " + t(x.den) : x.k === "sup" ? t([x.base]) + " to the " + t([x.exp]) : x.k === "radn" ? "square root of " + t([x.body]) : "").join("");
+  return t([n]);
+}
+function mathHtml(s) { return mathRender(mathTree(mathTokens(String(s ?? "")).out)); }
+/* Math sections get formatted math; everything else is plain text. */
+function qText(q, s) { return q && q.section === "Math" ? mathHtml(s) : esc(s); }
 
 /* ---------------- passage rendering ---------------- */
 function inline(text) {
@@ -368,14 +455,14 @@ function renderTest() {
   const qnum = S.view.idx + 1;
   const choices = q.spr
     ? (locked
-      ? `<div class="sprbox"><span class="muted small">Your answer</span> <b class="num">${esc(a[0])}</b></div>`
+      ? `<div class="sprbox"><span class="muted small">Your answer</span> <b class="num">${qText(q, a[0])}</b></div>`
       : `<div class="sprbox"><label class="small muted" for="sprIn">Type your answer (a number, fraction like 3/4, or decimal)</label>
           <input id="sprIn" type="text" inputmode="decimal" autocomplete="off" value="${esc(S.sel ?? "")}" oninput="S.sel=this.value.trim()||null;document.getElementById('submitBtn').disabled=!S.sel"></div>`)
     : q.choices.map((c, i) => {
     let cls = "";
     if (locked) { if (i === q.answer) cls = "right"; else if (i === chosen) cls = "wrong"; }
     else if (i === chosen) cls = "sel";
-    return `<button class="choice ${cls}" ${locked ? "disabled" : ""} onclick="pick(${i})" aria-pressed="${i === chosen}"><span class="let">${letter(q, i, qnum)}</span><span>${esc(c)}</span></button>`;
+    return `<button class="choice ${cls}" ${locked ? "disabled" : ""} onclick="pick(${i})" aria-pressed="${i === chosen}"><span class="let">${letter(q, i, qnum)}</span><span>${qText(q, c)}</span></button>`;
   }).join("");
   let fb = "";
   if (locked) {
@@ -383,9 +470,9 @@ function renderTest() {
     const note = !ok && !q.spr && q.notes && q.notes[String(a[0])];
     const right = q.spr ? q.sprAnswer : letter(q, q.answer, qnum);
     fb = `<div class="feedback ${ok ? "ok" : "no"}" aria-live="polite">
-      <strong class="v">${ok ? "Correct" : `Incorrect — the answer is ${esc(right)}`}</strong>
-      ${note ? `<p><b>Why ${letter(q, a[0], qnum)} is tempting:</b> ${esc(note)}</p>` : ""}
-      <p>${esc(q.explanation)}</p>
+      <strong class="v">${ok ? "Correct" : `Incorrect — the answer is ${qText(q, right)}`}</strong>
+      ${note ? `<p><b>Why ${letter(q, a[0], qnum)} is tempting:</b> ${qText(q, note)}</p>` : ""}
+      <p>${qText(q, q.explanation)}</p>
     </div>`;
   }
   const isLast = S.view.sec === t.sections.length - 1 && S.view.idx === sec.questionIds.length - 1;
@@ -413,7 +500,7 @@ function renderTest() {
         <div class="qbody ${split ? "split" : ""}">
           ${q.passage ? `<div class="passage" id="passage">${renderPassage(q.passage)}</div>` : ""}
           <div>
-            <p class="prompt">${esc(q.prompt)}</p>
+            <p class="prompt">${qText(q, q.prompt)}</p>
             <div class="choices" role="group" aria-label="Answer choices">${choices}</div>
             ${fb}
             <div class="qfoot">
